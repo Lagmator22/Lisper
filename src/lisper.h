@@ -21,11 +21,20 @@ struct TranscriptionResult {
 };
 
 struct LisperConfig {
+  enum class Device {
+    Auto,
+    CPU,
+    GPU,
+  };
+
   std::string model_path;
   std::string language = "en";
   int threads = 4;
   bool translate = false;
   bool print_progress = true;
+  Device device = Device::Auto;
+  int gpu_device = 0;
+  bool flash_attn = true;
 };
 
 class Lisper {
@@ -39,6 +48,9 @@ public:
   TranscriptionResult transcribe(const std::string &audio_path);
 
   bool is_loaded() const;
+  int threads() const { return config_.threads; }
+  bool translate() const { return config_.translate; }
+  const std::string &language() const { return config_.language; }
 
   struct whisper_context *get_ctx() const { return ctx_; }
 

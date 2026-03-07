@@ -1,5 +1,6 @@
 #include "media.h"
 
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -14,18 +15,55 @@ static std::string generate_tmp_name(const std::string &tmp_dir) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<int> dist(10000, 99999);
-  return tmp_dir + "/lisper_" + std::to_string(dist(gen)) + ".wav";
+  return (fs::path(tmp_dir) / ("lisper_" + std::to_string(dist(gen)) + ".wav"))
+      .string();
+}
+
+static std::string shell_quote(const std::string &path) {
+#ifdef _WIN32
+  std::string quoted = "\"";
+  for (const char c : path) {
+    if (c == '"') {
+      quoted += "\\\"";
+    } else {
+      quoted += c;
+    }
+  }
+  quoted += "\"";
+  return quoted;
+#else
+  std::string quoted = "'";
+  for (const char c : path) {
+    if (c == '\'') {
+      quoted += "'\\''";
+    } else {
+      quoted += c;
+    }
+  }
+  quoted += "'";
+  return quoted;
+#endif
+}
+
+static std::string null_device() {
+#ifdef _WIN32
+  return "NUL";
+#else
+  return "/dev/null";
+#endif
 }
 
 static bool ffmpeg_available() {
-  int ret = std::system("ffmpeg -version > /dev/null 2>&1");
+  const std::string cmd = "ffmpeg -version > " + null_device() + " 2>&1";
+  int ret = std::system(cmd.c_str());
   return ret == 0;
 }
 
 std::string extract_audio(const std::string &input_path,
                           const std::string &tmp_dir) {
   if (!ffmpeg_available()) {
-    std::cerr << "ffmpeg not found. Install it with: brew install ffmpeg\n";
+    std::cerr << "ffmpeg not found. Install FFmpeg and ensure `ffmpeg` is in "
+                 "your PATH.\n";
     return "";
   }
 
@@ -34,14 +72,32 @@ std::string extract_audio(const std::string &input_path,
     return "";
   }
 
-  std::string out_path = generate_tmp_name(tmp_dir);
+  std::error_code ec;
+  const fs::path tmp_root = tmp_dir.empty() ? fs::temp_directory_path(ec)
+                                            : fs::path(tmp_dir);
+  if (ec) {
+    std::cerr << "Failed to resolve temporary directory: " << ec.message()
+              << "\n";
+    return "";
+  }
+
+  fs::create_directories(tmp_root, ec);
+  if (ec) {
+    std::cerr << "Failed to create temporary directory: " << ec.message()
+              << "\n";
+    return "";
+  }
+
+  std::string out_path = generate_tmp_name(tmp_root.string());
+  std::string safe_input = shell_quote(input_path);
+  std::string safe_output = shell_quote(out_path);
 
   // convert to 16kHz mono 16-bit PCM WAV
   std::ostringstream cmd;
-  cmd << "ffmpeg -y -i \"" << input_path << "\" "
+  cmd << "ffmpeg -nostdin -y -i " << safe_input << " "
       << "-ar 16000 -ac 1 -sample_fmt s16 "
-      << "-f wav \"" << out_path << "\" "
-      << "-loglevel error 2>&1";
+      << "-f wav " << safe_output << " "
+      << "-loglevel error > " << null_device() << " 2>&1";
 
   int ret = std::system(cmd.str().c_str());
   if (ret != 0) {
@@ -61,7 +117,9 @@ PreparedAudio prepare_audio(const std::string &input_path) {
   }
 
   std::string ext = fs::path(input_path).extension().string();
-  std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+  std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
+    return static_cast<char>(std::tolower(c));
+  });
 
   // if already a wav, use it directly
   if (ext == ".wav") {

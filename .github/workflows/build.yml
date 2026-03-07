@@ -1,0 +1,216 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+        include:
+          - compiler: gcc
+            cc: gcc-11
+            cxx: g++-11
+          - compiler: clang
+            cc: clang-14
+            cxx: clang++-14
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ffmpeg \
+          libsdl2-dev \
+          libsdl2-ttf-dev \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswresample-dev
+
+    - name: Configure CMake
+      env:
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
+      run: |
+        cmake -B ${{github.workspace}}/build \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DLISPER_ENABLE_LIVE=ON \
+          -DLISPER_BUILD_TESTS=ON
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j$(nproc)
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: |
+        # Download small test model
+        mkdir -p models
+        cd models
+        wget -q https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+        cd ..
+        # Run basic smoke test
+        ./lisper --help
+        ./lisper --list-model-profiles
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        brew install cmake ffmpeg sdl2 sdl2_ttf
+
+    - name: Configure CMake
+      run: |
+        cmake -B ${{github.workspace}}/build \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DLISPER_ENABLE_LIVE=ON \
+          -DWHISPER_METAL=ON
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j$(sysctl -n hw.ncpu)
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: |
+        ./lisper --help
+        ./lisper --list-model-profiles
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v1
+
+    - name: Install dependencies
+      run: |
+        # Install vcpkg for dependency management
+        git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+        C:\vcpkg\bootstrap-vcpkg.bat
+        C:\vcpkg\vcpkg integrate install
+        C:\vcpkg\vcpkg install ffmpeg:x64-windows sdl2:x64-windows
+
+    - name: Configure CMake
+      run: |
+        cmake -B ${{github.workspace}}/build `
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
+          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+          -DVCPKG_TARGET_TRIPLET=x64-windows
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      shell: cmd
+      run: |
+        Release\lisper.exe --help
+        Release\lisper.exe --list-model-profiles
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Install tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format-14 cppcheck
+
+    - name: Check formatting
+      run: |
+        # Check if code is properly formatted
+        find src -name "*.cpp" -o -name "*.h" | xargs clang-format-14 --dry-run --Werror 2>&1 | tee format-check.log
+        if [ -s format-check.log ]; then
+          echo "Code formatting issues detected. Run clang-format to fix."
+          exit 1
+        fi
+
+    - name: Static analysis
+      run: |
+        cppcheck --enable=warning,style,performance,portability \
+                 --suppress=missingInclude \
+                 --error-exitcode=1 \
+                 --std=c++17 \
+                 src/
+
+  release:
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Check for version tag
+      id: check_tag
+      run: |
+        VERSION=$(grep "project(Lisper VERSION" CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+        echo "version=v$VERSION" >> $GITHUB_OUTPUT
+        git fetch --tags
+        if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create release
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.check_tag.outputs.version }}
+        release_name: Release ${{ steps.check_tag.outputs.version }}
+        draft: true
+        prerelease: false
+        body: |
+          ## Changes in this release
+          - See [CHANGELOG.md](CHANGELOG.md) for details
+
+          ## Installation
+          See [BUILDING.md](BUILDING.md) for build instructions.
+
+          ## Model Downloads
+          Download models from the [Model Guide](docs/MODELS.md).

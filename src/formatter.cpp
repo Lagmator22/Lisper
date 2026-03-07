@@ -1,6 +1,7 @@
 #include "formatter.h"
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -11,7 +12,9 @@ namespace formatter {
 
 Format parse_format(const std::string &fmt_str) {
   std::string f = fmt_str;
-  std::transform(f.begin(), f.end(), f.begin(), ::tolower);
+  std::transform(f.begin(), f.end(), f.begin(), [](unsigned char c) {
+    return static_cast<char>(std::tolower(c));
+  });
 
   if (f == "srt")
     return Format::SRT;
@@ -161,12 +164,12 @@ std::string format_result(const TranscriptionResult &result, Format fmt,
   }
 }
 
-bool write_output(const TranscriptionResult &result, Format fmt,
-                  const std::string &output_path,
-                  const std::string &source_filename) {
-  std::string content = format_result(result, fmt, source_filename);
+std::string resolve_output_path(const std::string &output_path, Format fmt,
+                                const std::string &source_filename) {
+  if (output_path.empty()) {
+    return "";
+  }
 
-  // if output_path is a directory, generate a filename
   std::string final_path = output_path;
   if (std::filesystem::is_directory(output_path)) {
     std::string base = source_filename;
@@ -196,6 +199,14 @@ bool write_output(const TranscriptionResult &result, Format fmt,
 
     final_path = output_path + "/" + base + ext;
   }
+  return final_path;
+}
+
+bool write_output(const TranscriptionResult &result, Format fmt,
+                  const std::string &output_path,
+                  const std::string &source_filename) {
+  std::string content = format_result(result, fmt, source_filename);
+  std::string final_path = resolve_output_path(output_path, fmt, source_filename);
 
   std::ofstream out(final_path);
   if (!out.is_open()) {

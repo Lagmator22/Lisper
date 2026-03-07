@@ -2,10 +2,12 @@
 
 #ifdef LISPER_ENABLE_LIVE
 
+#include "interrupt.h"
 #include "whisper.h"
 
 #include <SDL2/SDL.h>
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -20,7 +22,6 @@ static const int CHANNELS = 1;
 struct AudioState {
   std::mutex mutex;
   std::vector<float> audio_buffer;
-  bool is_running = true;
 };
 
 // SDL audio callback
@@ -76,8 +77,14 @@ void start_live_transcription(Lisper &engine) {
 
   std::vector<float> process_buffer;
 
-  while (state.is_running) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(step_ms));
+  while (!interrupt_state::is_interrupted()) {
+    for (int i = 0; i < step_ms / 100 && !interrupt_state::is_interrupted();
+         ++i) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    if (interrupt_state::is_interrupted()) {
+      break;
+    }
 
     {
       std::lock_guard<std::mutex> lock(state.mutex);
@@ -98,12 +105,20 @@ void start_live_transcription(Lisper &engine) {
       params.print_timestamps = false;
       params.print_special = false;
       params.single_segment = true;
-      params.n_threads = 4;
-      params.language = "en";
+      params.translate = engine.translate();
+      params.n_threads = engine.threads();
+      params.language = engine.language().c_str();
+      params.abort_callback = [](void *) {
+        return interrupt_state::is_interrupted();
+      };
+      params.abort_callback_user_data = nullptr;
 
       // Re-use engine's whisper context
       int ret = whisper_full(engine.get_ctx(), params, process_buffer.data(),
-                             process_buffer.size());
+                             static_cast<int>(process_buffer.size()));
+      if (ret != 0 && interrupt_state::is_interrupted()) {
+        break;
+      }
       if (ret == 0) {
         int n_segments = whisper_full_n_segments(engine.get_ctx());
         for (int i = 0; i < n_segments; ++i) {

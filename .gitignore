@@ -1,12 +1,93 @@
+# Build directories
 build/
+build*/
+build-*/
+build-check/
+
+# Model files (large binaries)
 models/
+*.bin
+*.gguf
+*.ggml
+
+# Media files (test/sample files)
+*.wav
+*.mp3
+*.mp4
+*.aiff
+*.aif
+*.flac
+*.ogg
+*.m4a
+*.aac
+*.wma
+*.mkv
+*.avi
+*.webm
+*.mov
+*.flv
+*.wmv
+*.m4v
+
+# Compilation artifacts
 *.o
 *.d
-.DS_Store
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+
+# CMake
 CMakeFiles/
 cmake_install.cmake
 CMakeCache.txt
 Makefile
 compile_commands.json
-.cache/
+*.cmake
+!CMakeLists.txt
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+*.user
+*.xcodeproj/
+*.xcworkspace/
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
 tmp/
+temp/
+.cache/
+*.tmp
+*.bak
+*.backup
+
+# Log files
+*.log
+
+# Python (for OpenVINO scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# Documentation build
+docs/_build/
+docs/html/
+
+# Test outputs
+test_output/
+transcripts/
+output/
