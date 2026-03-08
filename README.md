@@ -6,7 +6,7 @@
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B17)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](https://github.com/Lagmator22/Lisper)
 
-Local speech-to-text engine built in C++. Transcribes audio and video files using [whisper.cpp](https://github.com/ggerganov/whisper.cpp) with support for Intel OpenVINO acceleration.
+Local speech-to-text engine built in C++. Transcribes audio and video files using [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 
 **Privacy-first design** - All transcription happens locally on your hardware. No cloud APIs, no data leaves your machine.
 
@@ -21,7 +21,7 @@ Local speech-to-text engine built in C++. Transcribes audio and video files usin
 - **Live Transcription**: Real-time microphone transcription (when compiled with SDL2)
 - **Model Profiles**: Pre-configured settings for fast/balanced/quality/max transcription
 - **Cross-platform**: Works on macOS, Windows, and Linux
-- **Hardware Acceleration**: OpenVINO support for Intel CPUs and GPUs
+- **Hardware Acceleration**: Broad hardware support via whisper.cpp backends
 - **Desktop GUI**: Native application with drag-and-drop support
 - **Beautiful CLI**: Animated interface with gradient styling and progress indicators
 
@@ -175,27 +175,6 @@ Live mode features:
 - Adjustable sensitivity
 
 ## Performance Optimization
-
-### Intel Hardware Acceleration (OpenVINO)
-
-For Intel CPUs and GPUs, enable OpenVINO acceleration:
-
-```bash
-# Install OpenVINO
-source /opt/intel/openvino/setupvars.sh
-
-# Convert model to OpenVINO format
-cd third_party/whisper.cpp/models
-python3 convert-whisper-to-openvino.py --model base.en
-cd ../../..
-
-# Build with OpenVINO support
-cmake -B build -DWHISPER_OPENVINO=1
-cmake --build build -j
-
-# Run with OpenVINO acceleration
-./build/lisper -m models/ggml-base.en-encoder-openvino.xml audio.wav
-```
 
 ### Performance Tips
 
