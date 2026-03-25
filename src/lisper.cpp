@@ -2,13 +2,19 @@
 #include "interrupt.h"
 #include "whisper.h"
 
-#include <algorithm>
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include <numeric>
 
 Lisper::Lisper(const LisperConfig &config) : config_(config) {
+  // Suppress whisper.cpp and ggml logging to keep CLI output clean
+  whisper_log_set([](ggml_log_level level, const char * text, void * user_data) {
+    (void)user_data;
+    if (level == GGML_LOG_LEVEL_ERROR) {
+      std::cerr << "whisper.cpp error: " << text;
+    }
+  }, nullptr);
+
   whisper_context_params cparams = whisper_context_default_params();
   cparams.use_gpu = config_.device != LisperConfig::Device::CPU;
   cparams.gpu_device = config_.gpu_device;
