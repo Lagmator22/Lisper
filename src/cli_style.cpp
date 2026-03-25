@@ -117,10 +117,26 @@ std::string gradient_line(const std::string &line, float shimmer_center) {
     return line;
   }
 
-  std::ostringstream out;
-  const float width = static_cast<float>(std::max<size_t>(1, line.size() - 1));
+  std::vector<std::string> chars;
+  for (size_t i = 0; i < line.size(); ) {
+    size_t char_len = 1;
+    unsigned char c = line[i];
+    if (c >= 0xC0) {
+      if ((c & 0xE0) == 0xC0) char_len = 2;
+      else if ((c & 0xF0) == 0xE0) char_len = 3;
+      else if ((c & 0xF8) == 0xF0) char_len = 4;
+    }
+    if (i + char_len > line.size()) {
+      char_len = line.size() - i;
+    }
+    chars.push_back(line.substr(i, char_len));
+    i += char_len;
+  }
 
-  for (size_t i = 0; i < line.size(); ++i) {
+  std::ostringstream out;
+  const float width = static_cast<float>(std::max<size_t>(1, chars.size() - 1));
+
+  for (size_t i = 0; i < chars.size(); ++i) {
     const float position = static_cast<float>(i) / width;
     Rgb color = palette_color(position);
 
@@ -129,7 +145,7 @@ std::string gradient_line(const std::string &line, float shimmer_center) {
       color = blend(color, {255, 255, 255}, (5.5f - dist) / 5.5f * 0.55f);
     }
 
-    out << rgb_code(color, line[i] != ' ') << line[i];
+    out << rgb_code(color, chars[i] != " ") << chars[i];
   }
 
   out << "\033[0m";
@@ -169,13 +185,13 @@ size_t fit_banner_width(size_t preferred) {
 }
 
 std::vector<std::string> build_banner_frame(float shimmer_center) {
-  static const std::vector<std::string> kBannerLarge = {
-      " _      ___   ____  ____   _____ ____  ",
-      "| |    |_ _| / ___||  _ \\| ____|  _ \\ ",
-      "| |     | |  \\___ \\| |_)|  _| | |_) |",
-      "| |___  | |   ___) |  __/ | |___|  _ < ",
-      "|_____||___| |____/|_|    |_____|_| \\_\\",
-  };
+  static const std::string kLogoRaw = R"(  ╔══════════════════════════════════════════════════╗
+  ║  ██       ██  ███████  ██████   ███████  ██████  ║
+  ║  ██       ██  ██       ██   ██  ██       ██   ██ ║
+  ║  ██       ██  ███████  ██████   █████    ██████  ║
+  ║  ██       ██       ██  ██       ██       ██   ██ ║
+  ║  ████████ ██  ███████  ██       ███████  ██   ██ ║
+  ╚══════════════════════════════════════════════════╝)";
 
   const bool compact = terminal_width() < 45;
   const size_t rule_width = fit_banner_width(compact ? 44 : 62);
@@ -198,10 +214,15 @@ std::vector<std::string> build_banner_frame(float shimmer_center) {
     lines.push_back("  " + cli_style::style("GUI  ", cli_style::Tone::Muted) +
                     cli_style::gradient_text("./build/lisper_gui", false));
   } else {
-    for (size_t i = 0; i < kBannerLarge.size(); ++i) {
-      lines.push_back(
-          "  " + gradient_line(kBannerLarge[i],
-                               shimmer_center + static_cast<float>(i) * 3.4f));
+    std::istringstream stream(kLogoRaw);
+    std::string logo_line;
+    int line_idx = 0;
+    while (std::getline(stream, logo_line)) {
+      if (!logo_line.empty()) {
+        lines.push_back(gradient_line(
+            logo_line, shimmer_center + static_cast<float>(line_idx) * 3.4f));
+        line_idx++;
+      }
     }
     lines.push_back("  " + cli_style::style("Local transcription studio",
                                             cli_style::Tone::Muted));
