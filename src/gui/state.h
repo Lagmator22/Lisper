@@ -53,10 +53,8 @@ struct AppState {
   std::vector<std::string> logs;
 };
 
-void copy_string(std::array<char, kPathBuffer> &target,
-                 const std::string &value);
-void copy_string(std::array<char, kTextBuffer> &target,
-                 const std::string &value);
+void copy_string(std::array<char, kPathBuffer> &target, const std::string &value);
+void copy_string(std::array<char, kTextBuffer> &target, const std::string &value);
 
 std::string trim_copy(const char *value);
 bool path_exists(const std::string &path);

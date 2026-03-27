@@ -32,11 +32,9 @@ bool initialize_window(SDL_Window **window, SDL_Renderer **renderer) {
     return false;
   }
 
-  *renderer = SDL_CreateRenderer(
-      *window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  *renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
   if (*renderer == nullptr) {
-    *renderer = SDL_CreateRenderer(
-        *window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC);
+    *renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC);
   }
   if (*renderer == nullptr) {
     std::fprintf(stderr, "Failed to create renderer: %s\n", SDL_GetError());
@@ -143,16 +141,14 @@ int run_gui_app() {
 
       if (event.type == SDL_QUIT) {
         done = true;
-      } else if (event.type == SDL_WINDOWEVENT &&
-                 event.window.event == SDL_WINDOWEVENT_CLOSE &&
+      } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
                  event.window.windowID == SDL_GetWindowID(window)) {
         done = true;
       } else if (event.type == SDL_DROPFILE) {
         const char *dropped = event.drop.file;
         if (dropped != nullptr) {
           gui::copy_string(state.input_path, fs::absolute(dropped).string());
-          gui::append_log(state, "Loaded dropped file: " +
-                                     gui::trim_copy(state.input_path.data()));
+          gui::append_log(state, "Loaded dropped file: " + gui::trim_copy(state.input_path.data()));
           SDL_free(event.drop.file);
         }
       }

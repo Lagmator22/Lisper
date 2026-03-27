@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cctype>
 #include <string>
 #include <vector>
@@ -17,10 +18,8 @@ inline bool ends_with_ignore_case(const std::string &str,
   auto suffix_end = suffix.end();
 
   for (size_t i = 0; i < suffix.size(); ++i) {
-    char c1 = static_cast<char>(
-        std::tolower(static_cast<unsigned char>(*(str_end - 1 - i))));
-    char c2 = static_cast<char>(
-        std::tolower(static_cast<unsigned char>(*(suffix_end - 1 - i))));
+    char c1 = static_cast<char>(std::tolower(static_cast<unsigned char>(*(str_end - 1 - i))));
+    char c2 = static_cast<char>(std::tolower(static_cast<unsigned char>(*(suffix_end - 1 - i))));
     if (c1 != c2) {
       return false;
     }
@@ -44,12 +43,8 @@ inline bool is_audio_file(const std::string &path) {
 inline bool is_video_file(const std::string &path) {
   const std::vector<std::string> exts = {".mp4", ".mkv", ".avi", ".webm",
                                          ".mov", ".flv", ".wmv", ".m4v"};
-  for (const auto &ext : exts) {
-    if (ends_with_ignore_case(path, ext)) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(exts.begin(), exts.end(),
+                     [&path](const auto &ext) { return ends_with_ignore_case(path, ext); });
 }
 
 inline bool is_media_file(const std::string &path) {
@@ -58,8 +53,7 @@ inline bool is_media_file(const std::string &path) {
 
 // extract audio from a media file to a 16kHz mono WAV using ffmpeg.
 // returns the path to the temporary wav file, or empty string on failure.
-std::string extract_audio(const std::string &input_path,
-                          const std::string &tmp_dir = "");
+std::string extract_audio(const std::string &input_path, const std::string &tmp_dir = "");
 
 // prepare an input file for transcription. if it's already a wav, returns
 // the original path. if it's a video or non-wav audio, extracts to a temp wav.

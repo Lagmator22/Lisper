@@ -16,8 +16,7 @@ static std::string generate_tmp_name(const std::string &tmp_dir) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<int> dist(10000, 99999);
-  return (fs::path(tmp_dir) / ("lisper_" + std::to_string(dist(gen)) + ".wav"))
-      .string();
+  return (fs::path(tmp_dir) / ("lisper_" + std::to_string(dist(gen)) + ".wav")).string();
 }
 
 static std::string shell_quote(const std::string &path) {
@@ -60,8 +59,7 @@ static bool ffmpeg_available() {
   return ret == 0;
 }
 
-std::string extract_audio(const std::string &input_path,
-                          const std::string &tmp_dir) {
+std::string extract_audio(const std::string &input_path, const std::string &tmp_dir) {
   if (!ffmpeg_available()) {
     std::cerr << "ffmpeg not found. Install FFmpeg and ensure `ffmpeg` is in "
                  "your PATH.\n";
@@ -77,15 +75,13 @@ std::string extract_audio(const std::string &input_path,
   const fs::path tmp_root =
       tmp_dir.empty() ? fs::temp_directory_path(ec) : fs::path(tmp_dir);
   if (ec) {
-    std::cerr << "Failed to resolve temporary directory: " << ec.message()
-              << "\n";
+    std::cerr << "Failed to resolve temporary directory: " << ec.message() << "\n";
     return "";
   }
 
   fs::create_directories(tmp_root, ec);
   if (ec) {
-    std::cerr << "Failed to create temporary directory: " << ec.message()
-              << "\n";
+    std::cerr << "Failed to create temporary directory: " << ec.message() << "\n";
     return "";
   }
 
@@ -118,9 +114,8 @@ PreparedAudio prepare_audio(const std::string &input_path) {
   }
 
   std::string ext = fs::path(input_path).extension().string();
-  std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
-    return static_cast<char>(std::tolower(c));
-  });
+  std::transform(ext.begin(), ext.end(), ext.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
   // if already a wav, use it directly
   if (ext == ".wav") {

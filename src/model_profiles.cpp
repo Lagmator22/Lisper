@@ -1,15 +1,14 @@
 #include "model_profiles.h"
 
+#include <algorithm>
 #include <filesystem>
 
 namespace fs = std::filesystem;
 
 const std::vector<ModelProfile> &all_model_profiles() {
   static const std::vector<ModelProfile> kProfiles = {
-      {"fast", "ggml-small-q5_1.bin",
-       "Small multilingual model for fast drafts on CPU-only runs."},
-      {"balanced", "ggml-medium-q5_0.bin",
-       "Medium multilingual model for day-to-day transcripts."},
+      {"fast", "ggml-small-q5_1.bin", "Small multilingual model for fast drafts on CPU-only runs."},
+      {"balanced", "ggml-medium-q5_0.bin", "Medium multilingual model for day-to-day transcripts."},
       {"quality", "ggml-large-v3-turbo-q5_0.bin",
        "Best quality/speed tradeoff for Apple Silicon and Windows CPUs."},
       {"max", "ggml-large-v3.bin",
@@ -20,12 +19,11 @@ const std::vector<ModelProfile> &all_model_profiles() {
 }
 
 const ModelProfile *find_model_profile(const std::string &profile_name) {
-  for (const auto &profile : all_model_profiles()) {
-    if (profile.name == profile_name) {
-      return &profile;
-    }
-  }
-  return nullptr;
+  const auto &all = all_model_profiles();
+  auto it = std::find_if(all.begin(), all.end(), [&profile_name](const auto &profile) {
+    return profile.name == profile_name;
+  });
+  return it != all.end() ? &(*it) : nullptr;
 }
 
 std::string resolve_model_path(const std::string &explicit_model_path,

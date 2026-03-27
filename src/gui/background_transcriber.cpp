@@ -186,27 +186,24 @@ void BackgroundTranscriber::run_job(const JobRequest &request) {
     set_status("Running transcription");
     outcome.result = engine.transcribe(prepared.wav_path);
     if (!outcome.result.success) {
-      if (interrupt_state::is_interrupted() ||
-          outcome.result.error == "Interrupted by user") {
+      if (interrupt_state::is_interrupted() || outcome.result.error == "Interrupted by user") {
         outcome.cancelled = true;
         outcome.status = "Transcription cancelled.";
       } else {
-        outcome.status = outcome.result.error.empty() ? "Transcription failed."
-                                                      : outcome.result.error;
+        outcome.status =
+            outcome.result.error.empty() ? "Transcription failed." : outcome.result.error;
       }
       finish(std::move(outcome));
       return;
     }
 
     outcome.preview_text = formatter::format_result(
-        outcome.result, request.format,
-        fs::path(request.input_path).filename().string());
+        outcome.result, request.format, fs::path(request.input_path).filename().string());
 
     if (!request.output_path.empty()) {
       set_status("Writing output");
       outcome.final_output_path = formatter::resolve_output_path(
-          request.output_path, request.format,
-          fs::path(request.input_path).filename().string());
+          request.output_path, request.format, fs::path(request.input_path).filename().string());
       if (outcome.final_output_path.empty()) {
         outcome.status = "Could not resolve the output path.";
         finish(std::move(outcome));

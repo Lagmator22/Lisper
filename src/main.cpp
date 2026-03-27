@@ -59,12 +59,9 @@ static void print_model_profiles() {
             << "\n";
   std::cout << cli_style::divider() << "\n\n";
   for (const auto &profile : all_model_profiles()) {
-    std::cout << "  " << cli_style::badge(profile.name, cli_style::Tone::Accent)
-              << " " << cli_style::gradient_text(profile.filename, false)
-              << "\n"
-              << "    "
-              << cli_style::style(profile.description, cli_style::Tone::Muted)
-              << "\n\n";
+    std::cout << "  " << cli_style::badge(profile.name, cli_style::Tone::Accent) << " "
+              << cli_style::gradient_text(profile.filename, false) << "\n"
+              << "    " << cli_style::style(profile.description, cli_style::Tone::Muted) << "\n\n";
   }
 }
 
@@ -75,31 +72,23 @@ static std::string style_usage_heading(const std::string &text) {
 static void print_usage() {
   std::cout << cli_style::divider() << "\n";
   std::cout << style_usage_heading("LISPER CLI") << "\n";
-  std::cout << cli_style::style(
-                   "Local speech-to-text for offline transcription on the "
-                   "hardware you already have.",
-                   cli_style::Tone::Muted)
+  std::cout << cli_style::style("Local speech-to-text for offline transcription on the "
+                                "hardware you already have.",
+                                cli_style::Tone::Muted)
             << "\n";
   std::cout << cli_style::badge("whisper.cpp", cli_style::Tone::Accent) << " "
-            << cli_style::badge("cpu and gpu aware", cli_style::Tone::Success)
-            << " "
-            << cli_style::badge("private by default", cli_style::Tone::Warning)
-            << "\n";
+            << cli_style::badge("cpu and gpu aware", cli_style::Tone::Success) << " "
+            << cli_style::badge("private by default", cli_style::Tone::Warning) << "\n";
   std::cout << cli_style::divider() << "\n\n";
 
   std::cout << style_usage_heading("Usage") << "\n";
-  std::cout << "  "
-            << cli_style::gradient_text("lisper -m <model> <input>", false)
+  std::cout << "  " << cli_style::gradient_text("lisper -m <model> <input>", false)
             << "              Transcribe one file\n";
-  std::cout << "  "
-            << cli_style::gradient_text(
-                   "lisper --model-profile <profile> <input>", false)
+  std::cout << "  " << cli_style::gradient_text("lisper --model-profile <profile> <input>", false)
             << "  Auto-select a model profile\n";
-  std::cout << "  "
-            << cli_style::gradient_text("lisper -m <model> -d <dir>", false)
+  std::cout << "  " << cli_style::gradient_text("lisper -m <model> -d <dir>", false)
             << "             Batch transcribe a directory\n";
-  std::cout << "  "
-            << cli_style::gradient_text("lisper -m <model> -w <dir>", false)
+  std::cout << "  " << cli_style::gradient_text("lisper -m <model> -w <dir>", false)
             << "             Watch a directory for new files\n";
   std::cout << "  " << cli_style::gradient_text("./build/lisper_gui", false)
             << "                    Launch the desktop app\n\n";
@@ -148,14 +137,12 @@ static void print_usage() {
 
   std::cout << style_usage_heading("Examples") << "\n";
   std::cout << "  "
-            << cli_style::gradient_text(
-                   "lisper --model-profile quality recording.wav", false)
+            << cli_style::gradient_text("lisper --model-profile quality recording.wav", false)
             << "\n";
   std::cout << "  "
-            << cli_style::gradient_text(
-                   "lisper -m models/ggml-large-v3-turbo-q5_0.bin lecture.mp4 "
-                   "-f srt -o lecture.srt",
-                   false)
+            << cli_style::gradient_text("lisper -m models/ggml-large-v3-turbo-q5_0.bin lecture.mp4 "
+                                        "-f srt -o lecture.srt",
+                                        false)
             << "\n";
   std::cout << "  "
             << cli_style::gradient_text(
@@ -163,12 +150,10 @@ static void print_usage() {
                    "-o ./transcripts/",
                    false)
             << "\n";
-  std::cout
-      << "  "
-      << cli_style::gradient_text(
-             "lisper --model-profile quality -w ./media/ -o ./output/ -f rag",
-             false)
-      << "\n";
+  std::cout << "  "
+            << cli_style::gradient_text(
+                   "lisper --model-profile quality -w ./media/ -o ./output/ -f rag", false)
+            << "\n";
 }
 
 static CliArgs parse_args(int argc, char **argv) {
@@ -215,8 +200,7 @@ static CliArgs parse_args(int argc, char **argv) {
       } else if (device == "auto") {
         args.device = CliArgs::DeviceArg::Auto;
       } else {
-        std::cerr << "Warning: invalid --device value '" << device
-                  << "', using auto\n";
+        std::cerr << "Warning: invalid --device value '" << device << "', using auto\n";
         args.device = CliArgs::DeviceArg::Auto;
       }
     } else if (arg == "--gpu-device" && i + 1 < argc) {
@@ -266,16 +250,15 @@ public:
   TempFileGuard &operator=(const TempFileGuard &) = delete;
 };
 
-static bool transcribe_file(Lisper &engine, const std::string &input,
-                            formatter::Format fmt, const std::string &output) {
+static bool transcribe_file(Lisper &engine, const std::string &input, formatter::Format fmt,
+                            const std::string &output) {
   if (interrupt_state::is_interrupted()) {
     std::cerr << "  Interrupted before processing started.\n";
     return false;
   }
 
   std::string filename = fs::path(input).filename().string();
-  std::cout << cli_style::style("Processing: ", cli_style::Tone::Accent)
-            << filename << "\n";
+  std::cout << cli_style::style("Processing: ", cli_style::Tone::Accent) << filename << "\n";
 
   auto prepared = media::prepare_audio(input);
   if (!prepared.success) {
@@ -289,8 +272,7 @@ static bool transcribe_file(Lisper &engine, const std::string &input,
   auto result = engine.transcribe(prepared.wav_path);
 
   if (!result.success) {
-    if (interrupt_state::is_interrupted() ||
-        result.error == "Interrupted by user") {
+    if (interrupt_state::is_interrupted() || result.error == "Interrupted by user") {
       std::cerr << "  Interrupted.\n";
       return false;
     }
@@ -299,8 +281,7 @@ static bool transcribe_file(Lisper &engine, const std::string &input,
   }
 
   int duration_sec = result.duration_ms / 1000;
-  std::cout << "  Duration: " << duration_sec / 60 << "m " << duration_sec % 60
-            << "s"
+  std::cout << "  Duration: " << duration_sec / 60 << "m " << duration_sec % 60 << "s"
             << " | Segments: " << result.segments.size() << "\n";
 
   if (output.empty()) {
@@ -315,20 +296,17 @@ static bool transcribe_file(Lisper &engine, const std::string &input,
   return true;
 }
 
-static bool ensure_directory(const std::string &path,
-                             const std::string &description) {
+static bool ensure_directory(const std::string &path, const std::string &description) {
   std::error_code ec;
   const fs::path dir(path);
 
   if (fs::exists(dir, ec)) {
     if (ec) {
-      std::cerr << "Failed to access " << description << ": " << ec.message()
-                << "\n";
+      std::cerr << "Failed to access " << description << ": " << ec.message() << "\n";
       return false;
     }
     if (!fs::is_directory(dir, ec) || ec) {
-      std::cerr << description << " exists but is not a directory: " << path
-                << "\n";
+      std::cerr << description << " exists but is not a directory: " << path << "\n";
       return false;
     }
     return true;
@@ -336,8 +314,7 @@ static bool ensure_directory(const std::string &path,
 
   fs::create_directories(dir, ec);
   if (ec) {
-    std::cerr << "Failed to create " << description << ": " << ec.message()
-              << "\n";
+    std::cerr << "Failed to create " << description << ": " << ec.message() << "\n";
     return false;
   }
   return true;
@@ -363,52 +340,45 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  if (find_model_profile(args.model_profile) == nullptr &&
-      args.model_path.empty()) {
+  if (find_model_profile(args.model_profile) == nullptr && args.model_path.empty()) {
     std::cerr << "Unknown model profile: " << args.model_profile << "\n";
     print_model_profiles();
     return 1;
   }
 
-  std::string model_path =
-      resolve_model_path(args.model_path, args.model_profile);
+  std::string model_path = resolve_model_path(args.model_path, args.model_profile);
 
   if (model_path.empty() && args.model_path.empty()) {
     const ModelProfile *profile = find_model_profile(args.model_profile);
     if (profile != nullptr) {
-      std::cout << cli_style::style(
-          "Model not found locally. Auto-downloading profile '" +
-              args.model_profile + "'...\n",
-          cli_style::Tone::Warning);
+      std::cout << cli_style::style("Model not found locally. Auto-downloading profile '" +
+                                        args.model_profile + "'...\n",
+                                    cli_style::Tone::Warning);
 
       std::string model_name = profile->filename;
       if (model_name.find("ggml-") == 0)
         model_name = model_name.substr(5);
-      if (model_name.find(".bin") != std::string::npos)
-        model_name = model_name.substr(0, model_name.find(".bin"));
+      auto bin_pos = model_name.find(".bin");
+      if (bin_pos != std::string::npos)
+        model_name.resize(bin_pos);
 
-      std::string script_path =
-          "./third_party/whisper.cpp/models/download-ggml-model.sh";
+      std::string script_path = "./third_party/whisper.cpp/models/download-ggml-model.sh";
       std::string out_dir = "models";
       if (!fs::exists(script_path) &&
-          fs::exists(
-              "../third_party/whisper.cpp/models/download-ggml-model.sh")) {
-        script_path =
-            "../third_party/whisper.cpp/models/download-ggml-model.sh";
+          fs::exists("../third_party/whisper.cpp/models/download-ggml-model.sh")) {
+        script_path = "../third_party/whisper.cpp/models/download-ggml-model.sh";
         if (!fs::exists("models")) {
           out_dir = "../models";
         }
       }
 
       std::string cmd = script_path + " " + model_name + " " + out_dir;
-      std::cout << cli_style::style("Executing: " + cmd, cli_style::Tone::Muted)
-                << "\n";
+      std::cout << cli_style::style("Executing: " + cmd, cli_style::Tone::Muted) << "\n";
 
       int res = std::system(cmd.c_str());
       if (res == 0) {
         model_path = resolve_model_path("", args.model_profile);
-        std::cout << cli_style::style("Download complete.\n",
-                                      cli_style::Tone::Success);
+        std::cout << cli_style::style("Download complete.\n", cli_style::Tone::Success);
       } else {
         std::cerr << "Failed to download model.\n";
       }
@@ -469,12 +439,8 @@ int main(int argc, char **argv) {
           ? "CPU"
           : (config.device == LisperConfig::Device::GPU ? "GPU" : "AUTO");
   std::cout << cli_style::badge(active_device, cli_style::Tone::Accent) << " "
-            << cli_style::badge("threads " + std::to_string(config.threads),
-                                cli_style::Tone::Muted)
-            << " "
-            << cli_style::badge("lang " + config.language,
-                                cli_style::Tone::Success)
-            << "\n";
+            << cli_style::badge("threads " + std::to_string(config.threads), cli_style::Tone::Muted)
+            << " " << cli_style::badge("lang " + config.language, cli_style::Tone::Success) << "\n";
 
   formatter::Format fmt = formatter::parse_format(args.format_str);
 
@@ -483,8 +449,7 @@ int main(int argc, char **argv) {
     live::start_live_transcription(engine);
     if (interrupt_state::is_interrupted()) {
       std::cout << "\n"
-                << cli_style::style("Interrupted. Exiting live mode.",
-                                    cli_style::Tone::Warning)
+                << cli_style::style("Interrupted. Exiting live mode.", cli_style::Tone::Warning)
                 << "\n";
       return 130;
     }
@@ -518,8 +483,7 @@ int main(int argc, char **argv) {
     });
 
     if (interrupt_state::is_interrupted()) {
-      std::cout << cli_style::style("Interrupted. Watch mode stopped.",
-                                    cli_style::Tone::Warning)
+      std::cout << cli_style::style("Interrupted. Watch mode stopped.", cli_style::Tone::Warning)
                 << "\n";
       return 130;
     }
@@ -539,12 +503,10 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    std::cout << cli_style::badge(std::to_string(files.size()) +
-                                      " media file(s)",
+    std::cout << cli_style::badge(std::to_string(files.size()) + " media file(s)",
                                   cli_style::Tone::Accent)
               << "\n";
-    std::cout << cli_style::style("Starting batch transcription...",
-                                  cli_style::Tone::Muted)
+    std::cout << cli_style::style("Starting batch transcription...", cli_style::Tone::Muted)
               << "\n";
     std::cout << cli_style::divider(50) << "\n\n";
 
@@ -553,8 +515,7 @@ int main(int argc, char **argv) {
     auto start_time = std::chrono::steady_clock::now();
 
     bool interrupted = false;
-    for (size_t i = 0; i < files.size() && !interrupt_state::is_interrupted();
-         i++) {
+    for (size_t i = 0; i < files.size() && !interrupt_state::is_interrupted(); i++) {
       std::cout << "[" << (i + 1) << "/" << files.size() << "] ";
 
       auto file_start = std::chrono::steady_clock::now();
@@ -563,18 +524,14 @@ int main(int argc, char **argv) {
 
       if (ok) {
         success++;
-        auto duration = std::chrono::duration_cast<std::chrono::seconds>(
-                            file_end - file_start)
-                            .count();
-        std::cout << "  "
-                  << cli_style::style("Completed", cli_style::Tone::Success)
-                  << " in " << duration << "s";
+        auto duration =
+            std::chrono::duration_cast<std::chrono::seconds>(file_end - file_start).count();
+        std::cout << "  " << cli_style::style("Completed", cli_style::Tone::Success) << " in "
+                  << duration << "s";
       } else {
         if (interrupt_state::is_interrupted()) {
           interrupted = true;
-          std::cout << "  "
-                    << cli_style::style("Interrupted",
-                                        cli_style::Tone::Warning);
+          std::cout << "  " << cli_style::style("Interrupted", cli_style::Tone::Warning);
           std::cout << "\n\n";
           break;
         }
@@ -584,13 +541,11 @@ int main(int argc, char **argv) {
 
       // Estimate remaining time
       if (i < files.size() - 1) {
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                           file_end - start_time)
-                           .count();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(file_end - start_time).count();
         auto avg_time = elapsed / (i + 1);
         auto remaining = avg_time * (files.size() - i - 1);
-        std::cout << " | Est. remaining: " << remaining / 60 << "m "
-                  << remaining % 60 << "s";
+        std::cout << " | Est. remaining: " << remaining / 60 << "m " << remaining % 60 << "s";
       }
       std::cout << "\n\n";
     }
@@ -605,8 +560,7 @@ int main(int argc, char **argv) {
     if (failed > 0) {
       std::cout << "  • Failed: " << failed << "\n";
     }
-    std::cout << "  • Total time: " << total_time / 60 << "m "
-              << total_time % 60 << "s\n";
+    std::cout << "  • Total time: " << total_time / 60 << "m " << total_time % 60 << "s\n";
 
     if (interrupted || interrupt_state::is_interrupted()) {
       return 130;

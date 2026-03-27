@@ -21,8 +21,7 @@ Lisper::Lisper(const LisperConfig &config) : config_(config) {
   cparams.use_gpu = config_.device != LisperConfig::Device::CPU;
   cparams.gpu_device = config_.gpu_device;
   cparams.flash_attn = config_.flash_attn && cparams.use_gpu;
-  ctx_ =
-      whisper_init_from_file_with_params(config_.model_path.c_str(), cparams);
+  ctx_ = whisper_init_from_file_with_params(config_.model_path.c_str(), cparams);
   if (!ctx_) {
     std::cerr << "Failed to load model: " << config_.model_path << "\n";
   }
@@ -34,10 +33,11 @@ Lisper::~Lisper() {
   }
 }
 
-bool Lisper::is_loaded() const { return ctx_ != nullptr; }
+bool Lisper::is_loaded() const {
+  return ctx_ != nullptr;
+}
 
-bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm,
-                      int &sample_rate) {
+bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sample_rate) {
   std::ifstream file(path, std::ios::binary);
   if (!file.is_open()) {
     return false;
@@ -176,8 +176,7 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm,
         return false;
       }
 
-      file.read(reinterpret_cast<char *>(raw.data()),
-                static_cast<std::streamsize>(sub_size));
+      file.read(reinterpret_cast<char *>(raw.data()), static_cast<std::streamsize>(sub_size));
       if (file.gcount() != static_cast<std::streamsize>(sub_size)) {
         std::cerr << "Failed to read audio data\n";
         return false;
@@ -239,17 +238,15 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
   // whisper expects 16kHz mono. if the wav is at a different rate we should
   // have already resampled via ffmpeg, but warn just in case.
   if (sample_rate != WHISPER_SAMPLE_RATE) {
-    std::cerr << "Warning: sample rate is " << sample_rate << "Hz, expected "
-              << WHISPER_SAMPLE_RATE << "Hz.\n"
+    std::cerr << "Warning: sample rate is " << sample_rate << "Hz, expected " << WHISPER_SAMPLE_RATE
+              << "Hz.\n"
               << "Use FFmpeg to convert: ffmpeg -i input -ar 16000 -ac 1 "
                  "output.wav\n";
   }
 
-  result.duration_ms =
-      static_cast<int>((pcm.size() * 1000) / WHISPER_SAMPLE_RATE);
+  result.duration_ms = static_cast<int>((pcm.size() * 1000) / WHISPER_SAMPLE_RATE);
 
-  whisper_full_params params =
-      whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+  whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
   params.print_realtime = false;
   params.print_progress = config_.print_progress;
   params.print_timestamps = false;
@@ -263,8 +260,7 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
   };
   params.abort_callback_user_data = nullptr;
 
-  int ret =
-      whisper_full(ctx_, params, pcm.data(), static_cast<int>(pcm.size()));
+  int ret = whisper_full(ctx_, params, pcm.data(), static_cast<int>(pcm.size()));
   if (ret != 0) {
     if (interrupt_state::is_interrupted()) {
       result.error = "Interrupted by user";

@@ -14,14 +14,12 @@ namespace fs = std::filesystem;
 
 namespace gui {
 
-void copy_string(std::array<char, kPathBuffer> &target,
-                 const std::string &value) {
+void copy_string(std::array<char, kPathBuffer> &target, const std::string &value) {
   target.fill('\0');
   std::snprintf(target.data(), target.size(), "%s", value.c_str());
 }
 
-void copy_string(std::array<char, kTextBuffer> &target,
-                 const std::string &value) {
+void copy_string(std::array<char, kTextBuffer> &target, const std::string &value) {
   target.fill('\0');
   std::snprintf(target.data(), target.size(), "%s", value.c_str());
 }
@@ -78,10 +76,9 @@ std::string timestamp_now() {
 void append_log(AppState &state, const std::string &message) {
   state.logs.push_back(timestamp_now() + "  " + message);
   if (state.logs.size() > 180) {
-    state.logs.erase(
-        state.logs.begin(),
-        state.logs.begin() +
-            static_cast<long>(state.logs.size() - static_cast<size_t>(180)));
+    state.logs.erase(state.logs.begin(),
+                     state.logs.begin() +
+                         static_cast<long>(state.logs.size() - static_cast<size_t>(180)));
   }
 }
 
@@ -115,7 +112,9 @@ std::string format_duration_ms(int duration_ms) {
   return out.str();
 }
 
-const std::vector<ModelProfile> &profiles() { return all_model_profiles(); }
+const std::vector<ModelProfile> &profiles() {
+  return all_model_profiles();
+}
 
 formatter::Format format_from_index(int index) {
   switch (index) {
@@ -190,9 +189,8 @@ std::string profile_description(int profile_index) {
 }
 
 void refresh_resolved_model(AppState &state) {
-  state.resolved_model_path =
-      resolve_model_path(trim_copy(state.manual_model_path.data()),
-                         current_profile_name(state.profile_index));
+  state.resolved_model_path = resolve_model_path(trim_copy(state.manual_model_path.data()),
+                                                 current_profile_name(state.profile_index));
 }
 
 std::string computed_output_preview(const AppState &state) {

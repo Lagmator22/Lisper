@@ -53,22 +53,21 @@ pick_input_media_file(const std::string &initial_path) {
 
   const char *result = tinyfd_openFileDialog(
       "Choose media file", dialog_seed_path(initial_path).c_str(),
-      static_cast<int>(std::size(patterns)), patterns, "Audio and video files",
-      0);
+      static_cast<int>(std::size(patterns)), patterns, "Audio and video files", 0);
   return normalize_dialog_result(result);
 }
 
 std::optional<std::string> pick_output_folder(const std::string &initial_path) {
-  const char *result = tinyfd_selectFolderDialog(
-      "Choose output folder", dialog_seed_path(initial_path).c_str());
+  const char *result =
+      tinyfd_selectFolderDialog("Choose output folder", dialog_seed_path(initial_path).c_str());
   return normalize_dialog_result(result);
 }
 
 std::optional<std::string> pick_output_file(const std::string &suggested_path) {
   static const char *patterns[] = {"*.txt", "*.srt", "*.json"};
-  const char *result = tinyfd_saveFileDialog(
-      "Choose output file", dialog_seed_path(suggested_path).c_str(),
-      static_cast<int>(std::size(patterns)), patterns, "Transcript files");
+  const char *result =
+      tinyfd_saveFileDialog("Choose output file", dialog_seed_path(suggested_path).c_str(),
+                            static_cast<int>(std::size(patterns)), patterns, "Transcript files");
   return normalize_dialog_result(result);
 }
 
