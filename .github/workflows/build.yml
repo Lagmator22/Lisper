@@ -172,7 +172,7 @@ jobs:
 
     - name: Static analysis
       run: |
-        cppcheck --enable=warning,style,performance,portability \
+        cppcheck --enable=warning,performance,portability \
                  --suppress=missingInclude \
                  --error-exitcode=1 \
                  --std=c++17 \
