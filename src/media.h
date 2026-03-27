@@ -8,7 +8,8 @@
 namespace media {
 
 // Helper function for case-insensitive string comparison
-inline bool ends_with_ignore_case(const std::string &str, const std::string &suffix) {
+inline bool ends_with_ignore_case(const std::string &str,
+                                  const std::string &suffix) {
   if (str.size() < suffix.size()) {
     return false;
   }
@@ -28,10 +29,14 @@ inline bool ends_with_ignore_case(const std::string &str, const std::string &suf
 
 // supported audio extensions
 inline bool is_audio_file(const std::string &path) {
-  const std::vector<std::string> exts = {".wav", ".mp3", ".flac", ".ogg", ".m4a",
-                                         ".aac", ".wma", ".aiff", ".aif"};
-  return std::any_of(exts.begin(), exts.end(),
-                     [&path](const auto &ext) { return ends_with_ignore_case(path, ext); });
+  const std::vector<std::string> exts = {
+      ".wav", ".mp3", ".flac", ".ogg", ".m4a", ".aac", ".wma", ".aiff", ".aif"};
+  for (const auto &ext : exts) {
+    if (ends_with_ignore_case(path, ext)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // supported video extensions

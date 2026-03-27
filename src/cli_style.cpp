@@ -189,7 +189,8 @@ size_t fit_banner_width(size_t preferred) {
 }
 
 std::vector<std::string> build_banner_frame(float shimmer_center) {
-  static const std::string kLogoRaw = R"(  ╔══════════════════════════════════════════════════╗
+  static const std::string kLogoRaw =
+      R"(  ╔══════════════════════════════════════════════════╗
   ║  ██       ██  ███████  ██████   ███████  ██████  ║
   ║  ██       ██  ██       ██   ██  ██       ██   ██ ║
   ║  ██       ██  ███████  ██████   █████    ██████  ║

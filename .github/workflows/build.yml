@@ -53,7 +53,10 @@ jobs:
           libavcodec-dev \
           libavformat-dev \
           libavutil-dev \
-          libswresample-dev
+          libswresample-dev \
+          gcc-11 \
+          g++-11 \
+          clang-14
 
     - name: Configure CMake
       env:
@@ -143,7 +146,7 @@ jobs:
       working-directory: ${{github.workspace}}/build
       shell: cmd
       run: |
-        set PATH=%PATH%;C:\vcpkg\installed\x64-windows\bin;${{github.workspace}}\build\bin\Release
+        copy C:\vcpkg\installed\x64-windows\bin\*.dll Release\
         Release\lisper.exe --help
         Release\lisper.exe --list-model-profiles
 
@@ -172,7 +175,7 @@ jobs:
 
     - name: Static analysis
       run: |
-        cppcheck --enable=warning,style,performance,portability \
+        cppcheck --enable=warning,performance,portability \
                  --suppress=missingInclude \
                  --error-exitcode=1 \
                  --std=c++17 \

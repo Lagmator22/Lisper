@@ -72,7 +72,8 @@ std::string extract_audio(const std::string &input_path, const std::string &tmp_
   }
 
   std::error_code ec;
-  const fs::path tmp_root = tmp_dir.empty() ? fs::temp_directory_path(ec) : fs::path(tmp_dir);
+  const fs::path tmp_root =
+      tmp_dir.empty() ? fs::temp_directory_path(ec) : fs::path(tmp_dir);
   if (ec) {
     std::cerr << "Failed to resolve temporary directory: " << ec.message() << "\n";
     return "";

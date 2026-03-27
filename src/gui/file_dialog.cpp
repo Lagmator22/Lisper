@@ -44,10 +44,12 @@ std::optional<std::string> normalize_dialog_result(const char *result) {
 
 } // namespace
 
-std::optional<std::string> pick_input_media_file(const std::string &initial_path) {
-  static const char *patterns[] = {"*.wav",  "*.mp3",  "*.flac", "*.ogg", "*.m4a", "*.aac",
-                                   "*.wma",  "*.aiff", "*.aif",  "*.mp4", "*.mkv", "*.avi",
-                                   "*.webm", "*.mov",  "*.flv",  "*.wmv", "*.m4v"};
+std::optional<std::string>
+pick_input_media_file(const std::string &initial_path) {
+  static const char *patterns[] = {"*.wav", "*.mp3", "*.flac", "*.ogg", "*.m4a",
+                                   "*.aac", "*.wma", "*.aiff", "*.aif", "*.mp4",
+                                   "*.mkv", "*.avi", "*.webm", "*.mov", "*.flv",
+                                   "*.wmv", "*.m4v"};
 
   const char *result = tinyfd_openFileDialog(
       "Choose media file", dialog_seed_path(initial_path).c_str(),

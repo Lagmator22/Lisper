@@ -105,7 +105,9 @@ void BackgroundTranscriber::set_status(const std::string &status) {
 void BackgroundTranscriber::finish(JobOutcome outcome) {
   std::lock_guard<std::mutex> lock(mutex_);
   running_ = false;
-  status_ = outcome.cancelled ? "Cancelled" : (outcome.success ? "Complete" : "Needs attention");
+  status_ = outcome.cancelled
+                ? "Cancelled"
+                : (outcome.success ? "Complete" : "Needs attention");
   completed_ = std::move(outcome);
 }
 
@@ -141,7 +143,8 @@ void BackgroundTranscriber::run_job(const JobRequest &request) {
     }
 
     if (!path_exists(outcome.resolved_model_path)) {
-      outcome.status = "The model file does not exist: " + outcome.resolved_model_path;
+      outcome.status =
+          "The model file does not exist: " + outcome.resolved_model_path;
       finish(std::move(outcome));
       return;
     }
@@ -213,7 +216,8 @@ void BackgroundTranscriber::run_job(const JobRequest &request) {
         std::error_code ec;
         fs::create_directories(parent, ec);
         if (ec) {
-          outcome.status = "Failed to create the output directory: " + ec.message();
+          outcome.status =
+              "Failed to create the output directory: " + ec.message();
           finish(std::move(outcome));
           return;
         }

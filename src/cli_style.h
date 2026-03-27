@@ -41,7 +41,7 @@ public:
   explicit Spinner(std::string message);
   ~Spinner();
 
-  // Non-copyable due to thread ownership
+  // Disable copying - this class manages a raw pointer
   Spinner(const Spinner &) = delete;
   Spinner &operator=(const Spinner &) = delete;
 
