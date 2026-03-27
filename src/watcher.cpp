@@ -16,9 +16,7 @@ namespace watcher {
 
 static std::atomic<bool> watch_interrupted(false);
 
-void interrupt_watch() {
-  watch_interrupted = true;
-}
+void interrupt_watch() { watch_interrupted = true; }
 
 std::vector<std::string> scan_directory(const std::string &dir) {
   std::vector<std::string> files;
@@ -58,9 +56,8 @@ bool watch_directory(const WatchConfig &config,
 
   while (!watch_interrupted && !interrupt_state::is_interrupted()) {
     // Use shorter sleep intervals for more responsive shutdown
-    for (int i = 0;
-         i < config.poll_interval_sec * 10 && !watch_interrupted &&
-         !interrupt_state::is_interrupted();
+    for (int i = 0; i < config.poll_interval_sec * 10 && !watch_interrupted &&
+                    !interrupt_state::is_interrupted();
          i++) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

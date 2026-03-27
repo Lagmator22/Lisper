@@ -206,7 +206,8 @@ bool write_output(const TranscriptionResult &result, Format fmt,
                   const std::string &output_path,
                   const std::string &source_filename) {
   std::string content = format_result(result, fmt, source_filename);
-  std::string final_path = resolve_output_path(output_path, fmt, source_filename);
+  std::string final_path =
+      resolve_output_path(output_path, fmt, source_filename);
 
   std::ofstream out(final_path);
   if (!out.is_open()) {

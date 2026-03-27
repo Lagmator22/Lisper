@@ -24,10 +24,9 @@ namespace {
 constexpr float kMouseWheelScale = 0.32f;
 
 bool initialize_window(SDL_Window **window, SDL_Renderer **renderer) {
-  *window =
-      SDL_CreateWindow("Lisper Studio", SDL_WINDOWPOS_CENTERED,
-                       SDL_WINDOWPOS_CENTERED, 1440, 920,
-                       SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+  *window = SDL_CreateWindow("Lisper Studio", SDL_WINDOWPOS_CENTERED,
+                             SDL_WINDOWPOS_CENTERED, 1440, 920,
+                             SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
   if (*window == nullptr) {
     std::fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());
     return false;
@@ -61,10 +60,10 @@ void damp_mouse_wheel(SDL_Event *event) {
   event->wheel.preciseX *= kMouseWheelScale;
   event->wheel.preciseY *= kMouseWheelScale;
 #endif
-  event->wheel.x =
-      static_cast<Sint32>(static_cast<float>(event->wheel.x) * kMouseWheelScale);
-  event->wheel.y =
-      static_cast<Sint32>(static_cast<float>(event->wheel.y) * kMouseWheelScale);
+  event->wheel.x = static_cast<Sint32>(static_cast<float>(event->wheel.x) *
+                                       kMouseWheelScale);
+  event->wheel.y = static_cast<Sint32>(static_cast<float>(event->wheel.y) *
+                                       kMouseWheelScale);
 
   if (event->wheel.x == 0 && original_x != 0) {
     event->wheel.x = original_x > 0 ? 1 : -1;
@@ -175,10 +174,11 @@ int run_gui_app() {
       if (completed->cancelled) {
         gui::append_log(state, "Run ended after cancellation.");
       } else if (completed->success) {
-        gui::append_log(
-            state, "Finished " + std::string(gui::format_label(gui::format_from_index(
-                                state.format_index))) +
-                       " output.");
+        gui::append_log(state,
+                        "Finished " +
+                            std::string(gui::format_label(
+                                gui::format_from_index(state.format_index))) +
+                            " output.");
       }
     }
 
