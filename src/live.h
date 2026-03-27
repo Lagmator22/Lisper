@@ -9,7 +9,7 @@ namespace live {
 
 // Start capturing from default microphone and transcribe in real-time.
 // Blocks until interrupted by Ctrl+C.
-void start_live_transcription(Lisper& engine);
+void start_live_transcription(Lisper &engine);
 
 } // namespace live
 

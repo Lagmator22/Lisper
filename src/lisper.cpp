@@ -8,12 +8,14 @@
 
 Lisper::Lisper(const LisperConfig &config) : config_(config) {
   // Suppress whisper.cpp and ggml logging to keep CLI output clean
-  whisper_log_set([](ggml_log_level level, const char * text, void * user_data) {
-    (void)user_data;
-    if (level == GGML_LOG_LEVEL_ERROR) {
-      std::cerr << "whisper.cpp error: " << text;
-    }
-  }, nullptr);
+  whisper_log_set(
+      [](ggml_log_level level, const char *text, void *user_data) {
+        (void)user_data;
+        if (level == GGML_LOG_LEVEL_ERROR) {
+          std::cerr << "whisper.cpp error: " << text;
+        }
+      },
+      nullptr);
 
   whisper_context_params cparams = whisper_context_default_params();
   cparams.use_gpu = config_.device != LisperConfig::Device::CPU;
@@ -85,7 +87,7 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm,
   int16_t bits_per_sample = 0;
   bool fmt_found = false;
 
-  const size_t max_iterations = 100;  // Prevent infinite loops
+  const size_t max_iterations = 100; // Prevent infinite loops
   size_t iterations = 0;
 
   while (file.good() && iterations++ < max_iterations) {
@@ -128,8 +130,7 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm,
       file.read(reinterpret_cast<char *>(&bits_per_sample), 2);
 
       // Validate format parameters
-      if (num_channels <= 0 || num_channels > 32 ||
-          sr <= 0 || sr > 384000 ||
+      if (num_channels <= 0 || num_channels > 32 || sr <= 0 || sr > 384000 ||
           bits_per_sample <= 0 || bits_per_sample > 64) {
         std::cerr << "Invalid audio format parameters\n";
         return false;
@@ -257,7 +258,9 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
   params.language = config_.language.c_str();
   params.n_threads = config_.threads;
   params.token_timestamps = true;
-  params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
+  params.abort_callback = [](void *) {
+    return interrupt_state::is_interrupted();
+  };
   params.abort_callback_user_data = nullptr;
 
   int ret =

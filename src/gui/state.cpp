@@ -202,7 +202,8 @@ std::string computed_output_preview(const AppState &state) {
     return "";
   }
 
-  return formatter::resolve_output_path(output, format_from_index(state.format_index),
+  return formatter::resolve_output_path(output,
+                                        format_from_index(state.format_index),
                                         fs::path(input).filename().string());
 }
 
@@ -215,11 +216,13 @@ std::vector<std::string> validation_issues(const AppState &state) {
   } else if (!path_exists(input)) {
     issues.push_back("The selected input file does not exist.");
   } else if (!media::is_media_file(input)) {
-    issues.push_back("The input does not look like a supported audio/video file.");
+    issues.push_back(
+        "The input does not look like a supported audio/video file.");
   }
 
   if (state.resolved_model_path.empty()) {
-    issues.push_back("No model was resolved. Download a profile or enter a manual model path.");
+    issues.push_back("No model was resolved. Download a profile or enter a "
+                     "manual model path.");
   } else if (!path_exists(state.resolved_model_path)) {
     issues.push_back("The resolved model path is missing on disk.");
   }

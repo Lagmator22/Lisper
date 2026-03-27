@@ -127,8 +127,10 @@ void apply_style() {
 
   ImVec4 *colors = style.Colors;
   // Text colors - improved contrast for WCAG AA compliance
-  colors[ImGuiCol_Text] = color_v4(235, 241, 246);  // Slightly brighter for better contrast
-  colors[ImGuiCol_TextDisabled] = color_v4(160, 168, 177);  // Increased brightness for better readability
+  colors[ImGuiCol_Text] =
+      color_v4(235, 241, 246); // Slightly brighter for better contrast
+  colors[ImGuiCol_TextDisabled] =
+      color_v4(160, 168, 177); // Increased brightness for better readability
 
   // Background colors - maintaining dark theme
   colors[ImGuiCol_WindowBg] = color_v4(0, 0, 0, 0);
@@ -136,48 +138,51 @@ void apply_style() {
   colors[ImGuiCol_PopupBg] = color_v4(13, 17, 23, 252);
 
   // Borders - slightly brighter for visibility
-  colors[ImGuiCol_Border] = color_v4(52, 59, 67);  // Increased brightness
+  colors[ImGuiCol_Border] = color_v4(52, 59, 67); // Increased brightness
   colors[ImGuiCol_BorderShadow] = color_v4(0, 0, 0, 0);
 
   // Frame backgrounds - improved hover states
   colors[ImGuiCol_FrameBg] = color_v4(22, 27, 34);
-  colors[ImGuiCol_FrameBgHovered] = color_v4(34, 42, 53);  // More distinct hover
-  colors[ImGuiCol_FrameBgActive] = color_v4(38, 48, 61);   // More distinct active
+  colors[ImGuiCol_FrameBgHovered] = color_v4(34, 42, 53); // More distinct hover
+  colors[ImGuiCol_FrameBgActive] = color_v4(38, 48, 61); // More distinct active
 
   // Buttons - improved contrast and hover effects
   colors[ImGuiCol_Button] = color_v4(31, 111, 235);
-  colors[ImGuiCol_ButtonHovered] = color_v4(61, 144, 255);  // Brighter hover
-  colors[ImGuiCol_ButtonActive] = color_v4(23, 89, 198);    // Darker active for feedback
+  colors[ImGuiCol_ButtonHovered] = color_v4(61, 144, 255); // Brighter hover
+  colors[ImGuiCol_ButtonActive] =
+      color_v4(23, 89, 198); // Darker active for feedback
 
   // Headers - better distinction
   colors[ImGuiCol_Header] = color_v4(31, 38, 48);
-  colors[ImGuiCol_HeaderHovered] = color_v4(43, 54, 68);    // More visible hover
-  colors[ImGuiCol_HeaderActive] = color_v4(48, 62, 79);     // Clear active state
+  colors[ImGuiCol_HeaderHovered] = color_v4(43, 54, 68); // More visible hover
+  colors[ImGuiCol_HeaderActive] = color_v4(48, 62, 79);  // Clear active state
 
   // Separators - improved visibility
-  colors[ImGuiCol_Separator] = color_v4(52, 59, 67);        // Slightly brighter
+  colors[ImGuiCol_Separator] = color_v4(52, 59, 67); // Slightly brighter
   colors[ImGuiCol_SeparatorHovered] = color_v4(105, 117, 130);
   colors[ImGuiCol_SeparatorActive] = color_v4(130, 141, 152);
 
   // Interactive elements - better feedback
   colors[ImGuiCol_SliderGrab] = color_v4(68, 147, 248);
-  colors[ImGuiCol_SliderGrabActive] = color_v4(130, 200, 255);  // Brighter when active
-  colors[ImGuiCol_CheckMark] = color_v4(75, 155, 255);          // Slightly brighter
+  colors[ImGuiCol_SliderGrabActive] =
+      color_v4(130, 200, 255);                         // Brighter when active
+  colors[ImGuiCol_CheckMark] = color_v4(75, 155, 255); // Slightly brighter
 
   // Tabs - improved distinction
   colors[ImGuiCol_Tab] = color_v4(22, 27, 34);
   colors[ImGuiCol_TabHovered] = color_v4(34, 42, 53);
-  colors[ImGuiCol_TabActive] = color_v4(16, 21, 28);           // Darker for contrast
+  colors[ImGuiCol_TabActive] = color_v4(16, 21, 28); // Darker for contrast
   colors[ImGuiCol_TabUnfocused] = color_v4(22, 27, 34, 235);
   colors[ImGuiCol_TabUnfocusedActive] = color_v4(20, 25, 31, 245);
 
   // Title bars
   colors[ImGuiCol_TitleBg] = color_v4(13, 17, 23);
-  colors[ImGuiCol_TitleBgActive] = color_v4(16, 21, 28);       // Slightly different when active
+  colors[ImGuiCol_TitleBgActive] =
+      color_v4(16, 21, 28); // Slightly different when active
 
   // Scrollbars - improved visibility
   colors[ImGuiCol_ScrollbarBg] = color_v4(1, 4, 9, 0);
-  colors[ImGuiCol_ScrollbarGrab] = color_v4(82, 89, 97, 190);  // More visible
+  colors[ImGuiCol_ScrollbarGrab] = color_v4(82, 89, 97, 190); // More visible
   colors[ImGuiCol_ScrollbarGrabHovered] = color_v4(120, 128, 139, 210);
   colors[ImGuiCol_ScrollbarGrabActive] = color_v4(155, 162, 171, 230);
 
@@ -187,7 +192,8 @@ void apply_style() {
   colors[ImGuiCol_ResizeGripActive] = color_v4(68, 147, 248, 190);
 
   // Selection - improved visibility
-  colors[ImGuiCol_TextSelectedBg] = color_v4(47, 129, 247, 85);  // Slightly more opaque
+  colors[ImGuiCol_TextSelectedBg] =
+      color_v4(47, 129, 247, 85); // Slightly more opaque
   colors[ImGuiCol_NavHighlight] = color_v4(68, 147, 248, 190);
 }
 

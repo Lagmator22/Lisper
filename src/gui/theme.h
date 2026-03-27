@@ -25,9 +25,9 @@ void end_surface();
 
 void draw_background(ImDrawList *draw_list, const ImVec2 &pos,
                      const ImVec2 &size, float time_seconds);
-void draw_gradient_label(ImDrawList *draw_list, ImFont *font,
-                         float font_size, ImVec2 position,
-                         const std::string &text, float shimmer_offset);
+void draw_gradient_label(ImDrawList *draw_list, ImFont *font, float font_size,
+                         ImVec2 position, const std::string &text,
+                         float shimmer_offset);
 void draw_processing_wave(ImDrawList *draw_list, const ImVec2 &origin,
                           float width, float height, float time_seconds,
                           bool active);

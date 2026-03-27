@@ -118,13 +118,16 @@ std::string gradient_line(const std::string &line, float shimmer_center) {
   }
 
   std::vector<std::string> chars;
-  for (size_t i = 0; i < line.size(); ) {
+  for (size_t i = 0; i < line.size();) {
     size_t char_len = 1;
     unsigned char c = line[i];
     if (c >= 0xC0) {
-      if ((c & 0xE0) == 0xC0) char_len = 2;
-      else if ((c & 0xF0) == 0xE0) char_len = 3;
-      else if ((c & 0xF8) == 0xF0) char_len = 4;
+      if ((c & 0xE0) == 0xC0)
+        char_len = 2;
+      else if ((c & 0xF0) == 0xE0)
+        char_len = 3;
+      else if ((c & 0xF8) == 0xF0)
+        char_len = 4;
     }
     if (i + char_len > line.size()) {
       char_len = line.size() - i;
@@ -185,7 +188,8 @@ size_t fit_banner_width(size_t preferred) {
 }
 
 std::vector<std::string> build_banner_frame(float shimmer_center) {
-  static const std::string kLogoRaw = R"(  ╔══════════════════════════════════════════════════╗
+  static const std::string kLogoRaw =
+      R"(  ╔══════════════════════════════════════════════════╗
   ║  ██       ██  ███████  ██████   ███████  ██████  ║
   ║  ██       ██  ██       ██   ██  ██       ██   ██ ║
   ║  ██       ██  ███████  ██████   █████    ██████  ║
