@@ -68,8 +68,8 @@ bool watch_directory(const WatchConfig &config,
 
     auto current = scan_directory(config.watch_dir);
     for (const auto &f : current) {
-      if (known_files.find(f) == known_files.end()) {
-        known_files.insert(f);
+      const auto [it, inserted] = known_files.insert(f);
+      if (inserted) {
         std::cout << "New file detected: " << f << "\n";
         on_new_file(f);
 
