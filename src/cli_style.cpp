@@ -14,6 +14,7 @@
 #include <vector>
 
 #ifdef _WIN32
+#define NOMINMAX
 #include <io.h>
 #include <windows.h>
 #else
