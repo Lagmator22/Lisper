@@ -41,6 +41,10 @@ public:
   explicit Spinner(std::string message);
   ~Spinner();
 
+  // Disable copying - this class manages a raw pointer
+  Spinner(const Spinner &) = delete;
+  Spinner &operator=(const Spinner &) = delete;
+
   void success(const std::string &message = "");
   void fail(const std::string &message = "");
 
