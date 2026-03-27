@@ -1,3 +1,8 @@
+// Prevent Windows min/max macros from conflicting with std::min/std::max
+#ifdef _WIN32
+#define NOMINMAX
+#endif
+
 #include "cli_style.h"
 
 #include <algorithm>
@@ -14,7 +19,6 @@
 #include <vector>
 
 #ifdef _WIN32
-#define NOMINMAX
 #include <io.h>
 #include <windows.h>
 #else
