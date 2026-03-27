@@ -26,8 +26,7 @@ std::vector<std::string> scan_directory(const std::string &dir) {
     return files;
 
   for (const auto &entry : fs::directory_iterator(dir)) {
-    if (entry.is_regular_file() &&
-        media::is_media_file(entry.path().string())) {
+    if (entry.is_regular_file() && media::is_media_file(entry.path().string())) {
       files.push_back(entry.path().string());
     }
   }
@@ -53,14 +52,12 @@ bool watch_directory(const WatchConfig &config,
     known_files.insert(f);
   }
 
-  std::cout << "Watching " << config.watch_dir
-            << " for new media files. Press Ctrl+C to stop.\n";
+  std::cout << "Watching " << config.watch_dir << " for new media files. Press Ctrl+C to stop.\n";
 
   while (!watch_interrupted && !interrupt_state::is_interrupted()) {
     // Use shorter sleep intervals for more responsive shutdown
-    for (int i = 0;
-         i < config.poll_interval_sec * 10 && !watch_interrupted &&
-         !interrupt_state::is_interrupted();
+    for (int i = 0; i < config.poll_interval_sec * 10 && !watch_interrupted &&
+                    !interrupt_state::is_interrupted();
          i++) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

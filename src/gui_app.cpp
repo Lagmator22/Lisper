@@ -24,20 +24,16 @@ namespace {
 constexpr float kMouseWheelScale = 0.32f;
 
 bool initialize_window(SDL_Window **window, SDL_Renderer **renderer) {
-  *window =
-      SDL_CreateWindow("Lisper Studio", SDL_WINDOWPOS_CENTERED,
-                       SDL_WINDOWPOS_CENTERED, 1440, 920,
-                       SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+  *window = SDL_CreateWindow("Lisper Studio", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1440,
+                             920, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
   if (*window == nullptr) {
     std::fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());
     return false;
   }
 
-  *renderer = SDL_CreateRenderer(
-      *window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  *renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
   if (*renderer == nullptr) {
-    *renderer = SDL_CreateRenderer(
-        *window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC);
+    *renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC);
   }
   if (*renderer == nullptr) {
     std::fprintf(stderr, "Failed to create renderer: %s\n", SDL_GetError());
@@ -61,10 +57,8 @@ void damp_mouse_wheel(SDL_Event *event) {
   event->wheel.preciseX *= kMouseWheelScale;
   event->wheel.preciseY *= kMouseWheelScale;
 #endif
-  event->wheel.x =
-      static_cast<Sint32>(static_cast<float>(event->wheel.x) * kMouseWheelScale);
-  event->wheel.y =
-      static_cast<Sint32>(static_cast<float>(event->wheel.y) * kMouseWheelScale);
+  event->wheel.x = static_cast<Sint32>(static_cast<float>(event->wheel.x) * kMouseWheelScale);
+  event->wheel.y = static_cast<Sint32>(static_cast<float>(event->wheel.y) * kMouseWheelScale);
 
   if (event->wheel.x == 0 && original_x != 0) {
     event->wheel.x = original_x > 0 ? 1 : -1;
@@ -144,16 +138,14 @@ int run_gui_app() {
 
       if (event.type == SDL_QUIT) {
         done = true;
-      } else if (event.type == SDL_WINDOWEVENT &&
-                 event.window.event == SDL_WINDOWEVENT_CLOSE &&
+      } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
                  event.window.windowID == SDL_GetWindowID(window)) {
         done = true;
       } else if (event.type == SDL_DROPFILE) {
         const char *dropped = event.drop.file;
         if (dropped != nullptr) {
           gui::copy_string(state.input_path, fs::absolute(dropped).string());
-          gui::append_log(state, "Loaded dropped file: " +
-                                     gui::trim_copy(state.input_path.data()));
+          gui::append_log(state, "Loaded dropped file: " + gui::trim_copy(state.input_path.data()));
           SDL_free(event.drop.file);
         }
       }
@@ -176,8 +168,8 @@ int run_gui_app() {
         gui::append_log(state, "Run ended after cancellation.");
       } else if (completed->success) {
         gui::append_log(
-            state, "Finished " + std::string(gui::format_label(gui::format_from_index(
-                                state.format_index))) +
+            state, "Finished " +
+                       std::string(gui::format_label(gui::format_from_index(state.format_index))) +
                        " output.");
       }
     }

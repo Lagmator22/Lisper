@@ -80,8 +80,8 @@ struct Rgb {
 
 std::string rgb_code(const Rgb &color, bool bold = false) {
   std::ostringstream out;
-  out << "\033[" << (bold ? "1;" : "") << "38;2;" << color.r << ";" << color.g
-      << ";" << color.b << "m";
+  out << "\033[" << (bold ? "1;" : "") << "38;2;" << color.r << ";" << color.g << ";" << color.b
+      << "m";
   return out.str();
 }
 
@@ -109,8 +109,7 @@ Rgb palette_color(float t) {
   const float scaled = std::clamp(t, 0.0f, 1.0f) * (kPalette.size() - 1);
   const size_t index = static_cast<size_t>(scaled);
   const size_t next_index = std::min(index + 1, kPalette.size() - 1);
-  return blend(kPalette[index], kPalette[next_index],
-               scaled - static_cast<float>(index));
+  return blend(kPalette[index], kPalette[next_index], scaled - static_cast<float>(index));
 }
 
 std::string gradient_line(const std::string &line, float shimmer_center) {
@@ -119,13 +118,16 @@ std::string gradient_line(const std::string &line, float shimmer_center) {
   }
 
   std::vector<std::string> chars;
-  for (size_t i = 0; i < line.size(); ) {
+  for (size_t i = 0; i < line.size();) {
     size_t char_len = 1;
     unsigned char c = line[i];
     if (c >= 0xC0) {
-      if ((c & 0xE0) == 0xC0) char_len = 2;
-      else if ((c & 0xF0) == 0xE0) char_len = 3;
-      else if ((c & 0xF8) == 0xF0) char_len = 4;
+      if ((c & 0xE0) == 0xC0)
+        char_len = 2;
+      else if ((c & 0xF0) == 0xE0)
+        char_len = 3;
+      else if ((c & 0xF8) == 0xF0)
+        char_len = 4;
     }
     if (i + char_len > line.size()) {
       char_len = line.size() - i;
@@ -203,15 +205,12 @@ std::vector<std::string> build_banner_frame(float shimmer_center) {
 
   if (compact) {
     lines.push_back("  " + cli_style::gradient_text("LISPER", true));
-    lines.push_back("  " + cli_style::style("Local transcription studio",
-                                            cli_style::Tone::Muted));
-    lines.push_back(
-        "  " + cli_style::badge("local-first", cli_style::Tone::Accent) + " " +
-        cli_style::badge("cpu/gpu", cli_style::Tone::Success));
+    lines.push_back("  " + cli_style::style("Local transcription studio", cli_style::Tone::Muted));
+    lines.push_back("  " + cli_style::badge("local-first", cli_style::Tone::Accent) + " " +
+                    cli_style::badge("cpu/gpu", cli_style::Tone::Success));
     lines.push_back(
         "  " + cli_style::style("CLI  ", cli_style::Tone::Muted) +
-        cli_style::gradient_text(
-            "./build/lisper --model-profile quality recording.wav", false));
+        cli_style::gradient_text("./build/lisper --model-profile quality recording.wav", false));
     lines.push_back("  " + cli_style::style("GUI  ", cli_style::Tone::Muted) +
                     cli_style::gradient_text("./build/lisper_gui", false));
   } else {
@@ -220,29 +219,24 @@ std::vector<std::string> build_banner_frame(float shimmer_center) {
     int line_idx = 0;
     while (std::getline(stream, logo_line)) {
       if (!logo_line.empty()) {
-        lines.push_back(gradient_line(
-            logo_line, shimmer_center + static_cast<float>(line_idx) * 3.4f));
+        lines.push_back(
+            gradient_line(logo_line, shimmer_center + static_cast<float>(line_idx) * 3.4f));
         line_idx++;
       }
     }
-    lines.push_back("  " + cli_style::style("Local transcription studio",
+    lines.push_back("  " + cli_style::style("Local transcription studio", cli_style::Tone::Muted));
+    lines.push_back("  " + cli_style::badge("local-first", cli_style::Tone::Accent) + " " +
+                    cli_style::badge("cpu + gpu aware", cli_style::Tone::Success) + " " +
+                    cli_style::badge("desktop gui", cli_style::Tone::Warning));
+    lines.push_back("  " + cli_style::style("Private Whisper transcription with "
+                                            "better defaults and zero cloud detours.",
                                             cli_style::Tone::Muted));
     lines.push_back(
-        "  " + cli_style::badge("local-first", cli_style::Tone::Accent) + " " +
-        cli_style::badge("cpu + gpu aware", cli_style::Tone::Success) + " " +
-        cli_style::badge("desktop gui", cli_style::Tone::Warning));
-    lines.push_back("  " +
-                    cli_style::style("Private Whisper transcription with "
-                                     "better defaults and zero cloud detours.",
-                                     cli_style::Tone::Muted));
-    lines.push_back(
         "  " + cli_style::style("CLI   ", cli_style::Tone::Muted) +
-        cli_style::gradient_text(
-            "./build/lisper --model-profile quality recording.wav", false));
+        cli_style::gradient_text("./build/lisper --model-profile quality recording.wav", false));
     lines.push_back(
         "  " + cli_style::style("LIVE  ", cli_style::Tone::Muted) +
-        cli_style::gradient_text(
-            "./build/lisper --model-profile quality --live", false));
+        cli_style::gradient_text("./build/lisper --model-profile quality --live", false));
     lines.push_back("  " + cli_style::style("GUI   ", cli_style::Tone::Muted) +
                     cli_style::gradient_text("./build/lisper_gui", false));
   }
@@ -268,9 +262,13 @@ void initialize(bool enable_colors, bool enable_animations) {
   g_animations_enabled = enable_animations && tty;
 }
 
-bool colors_enabled() { return g_colors_enabled; }
+bool colors_enabled() {
+  return g_colors_enabled;
+}
 
-bool animations_enabled() { return g_animations_enabled; }
+bool animations_enabled() {
+  return g_animations_enabled;
+}
 
 std::string style(const std::string &text, Tone tone) {
   if (!g_colors_enabled) {
@@ -291,8 +289,7 @@ std::string gradient_text(const std::string &text, bool bold) {
       out << text[i];
       continue;
     }
-    out << rgb_code(palette_color(static_cast<float>(i) / width), bold)
-        << text[i];
+    out << rgb_code(palette_color(static_cast<float>(i) / width), bold) << text[i];
   }
   out << "\033[0m";
   return out.str();
@@ -359,9 +356,7 @@ Spinner::Spinner(std::string message) : message_(std::move(message)) {
     size_t idx = 0;
 
     while (impl_->running) {
-      std::cout << "\r"
-                << style(frames[idx % (sizeof(frames) / sizeof(frames[0]))],
-                         Tone::Accent)
+      std::cout << "\r" << style(frames[idx % (sizeof(frames) / sizeof(frames[0]))], Tone::Accent)
                 << " " << style(message_, Tone::Accent) << std::flush;
       idx++;
       std::this_thread::sleep_for(std::chrono::milliseconds(90));
@@ -369,8 +364,7 @@ Spinner::Spinner(std::string message) : message_(std::move(message)) {
   });
 }
 
-void Spinner::stop(const std::string &symbol, const std::string &message,
-                   Tone tone) {
+void Spinner::stop(const std::string &symbol, const std::string &message, Tone tone) {
   if (finished_) {
     return;
   }
@@ -391,8 +385,7 @@ void Spinner::stop(const std::string &symbol, const std::string &message,
   }
 
   const std::string final_message = message.empty() ? message_ : message;
-  std::cout << "\r" << style(symbol, tone) << " " << style(final_message, tone)
-            << "          \n";
+  std::cout << "\r" << style(symbol, tone) << " " << style(final_message, tone) << "          \n";
 }
 
 void Spinner::success(const std::string &message) {

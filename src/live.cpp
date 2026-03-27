@@ -31,8 +31,7 @@ static void audio_callback(void *userdata, Uint8 *stream, int len) {
   int num_samples = len / sizeof(float);
 
   std::lock_guard<std::mutex> lock(state->mutex);
-  state->audio_buffer.insert(state->audio_buffer.end(), float_stream,
-                             float_stream + num_samples);
+  state->audio_buffer.insert(state->audio_buffer.end(), float_stream, float_stream + num_samples);
 }
 
 void start_live_transcription(Lisper &engine) {
@@ -59,8 +58,7 @@ void start_live_transcription(Lisper &engine) {
     return;
   }
 
-  if (have.format != want.format || have.channels != want.channels ||
-      have.freq != want.freq) {
+  if (have.format != want.format || have.channels != want.channels || have.freq != want.freq) {
     std::cerr << "Warning: Could not get exact audio format requested.\n";
   }
 
@@ -78,8 +76,7 @@ void start_live_transcription(Lisper &engine) {
   std::vector<float> process_buffer;
 
   while (!interrupt_state::is_interrupted()) {
-    for (int i = 0; i < step_ms / 100 && !interrupt_state::is_interrupted();
-         ++i) {
+    for (int i = 0; i < step_ms / 100 && !interrupt_state::is_interrupted(); ++i) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     if (interrupt_state::is_interrupted()) {
@@ -98,8 +95,7 @@ void start_live_transcription(Lisper &engine) {
     }
 
     if (!process_buffer.empty()) {
-      whisper_full_params params =
-          whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+      whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
       params.print_realtime = false;
       params.print_progress = false;
       params.print_timestamps = false;
@@ -108,9 +104,7 @@ void start_live_transcription(Lisper &engine) {
       params.translate = engine.translate();
       params.n_threads = engine.threads();
       params.language = engine.language().c_str();
-      params.abort_callback = [](void *) {
-        return interrupt_state::is_interrupted();
-      };
+      params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
       params.abort_callback_user_data = nullptr;
 
       // Re-use engine's whisper context

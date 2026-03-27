@@ -6,10 +6,8 @@ namespace fs = std::filesystem;
 
 const std::vector<ModelProfile> &all_model_profiles() {
   static const std::vector<ModelProfile> kProfiles = {
-      {"fast", "ggml-small-q5_1.bin",
-       "Small multilingual model for fast drafts on CPU-only runs."},
-      {"balanced", "ggml-medium-q5_0.bin",
-       "Medium multilingual model for day-to-day transcripts."},
+      {"fast", "ggml-small-q5_1.bin", "Small multilingual model for fast drafts on CPU-only runs."},
+      {"balanced", "ggml-medium-q5_0.bin", "Medium multilingual model for day-to-day transcripts."},
       {"quality", "ggml-large-v3-turbo-q5_0.bin",
        "Best quality/speed tradeoff for Apple Silicon and Windows CPUs."},
       {"max", "ggml-large-v3.bin",

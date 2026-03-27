@@ -6,7 +6,6 @@
 
 namespace gui {
 
-void render_main_window(AppState &state, const Fonts &fonts,
-                        BackgroundTranscriber &job);
+void render_main_window(AppState &state, const Fonts &fonts, BackgroundTranscriber &job);
 
 } // namespace gui

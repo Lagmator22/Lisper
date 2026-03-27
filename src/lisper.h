@@ -58,6 +58,5 @@ private:
   struct whisper_context *ctx_ = nullptr;
   LisperConfig config_;
 
-  bool load_wav(const std::string &path, std::vector<float> &pcm,
-                int &sample_rate);
+  bool load_wav(const std::string &path, std::vector<float> &pcm, int &sample_rate);
 };
