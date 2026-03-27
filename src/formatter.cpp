@@ -171,7 +171,7 @@ std::string resolve_output_path(const std::string &output_path, Format fmt,
     // strip extension from source
     auto dot = base.rfind('.');
     if (dot != std::string::npos)
-      base = base.substr(0, dot);
+      base.resize(dot);
 
     std::string ext;
     switch (fmt) {

@@ -262,9 +262,8 @@ void render_model_section(AppState &state) {
   const auto &all = profiles();
   std::vector<const char *> names;
   names.reserve(all.size());
-  for (const auto &profile : all) {
-    names.push_back(profile.name.c_str());
-  }
+  std::transform(all.begin(), all.end(), std::back_inserter(names),
+                 [](const auto &profile) { return profile.name.c_str(); });
 
   label_text("Model profile");
   ImGui::SetNextItemWidth(-1.0f);

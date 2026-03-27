@@ -41,6 +41,10 @@ public:
   explicit Spinner(std::string message);
   ~Spinner();
 
+  // Non-copyable due to thread ownership
+  Spinner(const Spinner &) = delete;
+  Spinner &operator=(const Spinner &) = delete;
+
   void success(const std::string &message = "");
   void fail(const std::string &message = "");
 

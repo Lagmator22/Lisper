@@ -94,39 +94,38 @@ void start_live_transcription(Lisper &engine) {
       state.audio_buffer.clear();
     }
 
-    if (!process_buffer.empty()) {
-      whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-      params.print_realtime = false;
-      params.print_progress = false;
-      params.print_timestamps = false;
-      params.print_special = false;
-      params.single_segment = true;
-      params.translate = engine.translate();
-      params.n_threads = engine.threads();
-      params.language = engine.language().c_str();
-      params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
-      params.abort_callback_user_data = nullptr;
+    // process_buffer is guaranteed non-empty after the copy above
+    whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+    params.print_realtime = false;
+    params.print_progress = false;
+    params.print_timestamps = false;
+    params.print_special = false;
+    params.single_segment = true;
+    params.translate = engine.translate();
+    params.n_threads = engine.threads();
+    params.language = engine.language().c_str();
+    params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
+    params.abort_callback_user_data = nullptr;
 
-      // Re-use engine's whisper context
-      int ret = whisper_full(engine.get_ctx(), params, process_buffer.data(),
-                             static_cast<int>(process_buffer.size()));
-      if (ret != 0 && interrupt_state::is_interrupted()) {
-        break;
-      }
-      if (ret == 0) {
-        int n_segments = whisper_full_n_segments(engine.get_ctx());
-        for (int i = 0; i < n_segments; ++i) {
-          const char *text = whisper_full_get_segment_text(engine.get_ctx(), i);
-          if (text && strlen(text) > 0) {
-            std::string clean_text = text;
-            // trim leading whitespace
-            size_t first = clean_text.find_first_not_of(" \t\r\n");
-            if (first != std::string::npos) {
-              clean_text = clean_text.substr(first);
-            }
-            if (!clean_text.empty() && clean_text != "[BLANK_AUDIO]") {
-              std::cout << clean_text << " " << std::flush;
-            }
+    // Re-use engine's whisper context
+    int ret = whisper_full(engine.get_ctx(), params, process_buffer.data(),
+                           static_cast<int>(process_buffer.size()));
+    if (ret != 0 && interrupt_state::is_interrupted()) {
+      break;
+    }
+    if (ret == 0) {
+      int n_segments = whisper_full_n_segments(engine.get_ctx());
+      for (int i = 0; i < n_segments; ++i) {
+        const char *text = whisper_full_get_segment_text(engine.get_ctx(), i);
+        if (text && strlen(text) > 0) {
+          std::string clean_text = text;
+          // trim leading whitespace
+          size_t first = clean_text.find_first_not_of(" \t\r\n");
+          if (first != std::string::npos) {
+            clean_text = clean_text.substr(first);
+          }
+          if (!clean_text.empty() && clean_text != "[BLANK_AUDIO]") {
+            std::cout << clean_text << " " << std::flush;
           }
         }
       }

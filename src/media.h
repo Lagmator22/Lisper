@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cctype>
 #include <string>
 #include <vector>
@@ -29,24 +30,16 @@ inline bool ends_with_ignore_case(const std::string &str, const std::string &suf
 inline bool is_audio_file(const std::string &path) {
   const std::vector<std::string> exts = {".wav", ".mp3", ".flac", ".ogg", ".m4a",
                                          ".aac", ".wma", ".aiff", ".aif"};
-  for (const auto &ext : exts) {
-    if (ends_with_ignore_case(path, ext)) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(exts.begin(), exts.end(),
+                     [&path](const auto &ext) { return ends_with_ignore_case(path, ext); });
 }
 
 // supported video extensions
 inline bool is_video_file(const std::string &path) {
   const std::vector<std::string> exts = {".mp4", ".mkv", ".avi", ".webm",
                                          ".mov", ".flv", ".wmv", ".m4v"};
-  for (const auto &ext : exts) {
-    if (ends_with_ignore_case(path, ext)) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(exts.begin(), exts.end(),
+                     [&path](const auto &ext) { return ends_with_ignore_case(path, ext); });
 }
 
 inline bool is_media_file(const std::string &path) {

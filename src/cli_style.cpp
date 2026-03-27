@@ -106,10 +106,7 @@ Rgb palette_color(float t) {
       {94, 173, 255},
   };
 
-  if (kPalette.size() == 1) {
-    return kPalette.front();
-  }
-
+  // palette has multiple colors, no need for size check
   const float scaled = std::clamp(t, 0.0f, 1.0f) * (kPalette.size() - 1);
   const size_t index = static_cast<size_t>(scaled);
   const size_t next_index = std::min(index + 1, kPalette.size() - 1);

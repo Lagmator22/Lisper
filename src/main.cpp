@@ -358,8 +358,9 @@ int main(int argc, char **argv) {
       std::string model_name = profile->filename;
       if (model_name.find("ggml-") == 0)
         model_name = model_name.substr(5);
-      if (model_name.find(".bin") != std::string::npos)
-        model_name = model_name.substr(0, model_name.find(".bin"));
+      auto bin_pos = model_name.find(".bin");
+      if (bin_pos != std::string::npos)
+        model_name.resize(bin_pos);
 
       std::string script_path = "./third_party/whisper.cpp/models/download-ggml-model.sh";
       std::string out_dir = "models";
