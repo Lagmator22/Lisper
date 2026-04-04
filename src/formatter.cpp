@@ -121,7 +121,7 @@ static std::string format_rag(const TranscriptionResult &result, const std::stri
       // trim leading whitespace
       size_t start = chunk.find_first_not_of(" \t\n");
       if (start != std::string::npos) {
-        chunk = chunk.substr(start);
+        chunk.erase(0, start);
       }
 
       ss << "Source: " << source << " [chunk " << chunk_index << "]\n" << chunk << "\n\n---\n\n";
@@ -134,7 +134,7 @@ static std::string format_rag(const TranscriptionResult &result, const std::stri
   if (!chunk.empty()) {
     size_t start = chunk.find_first_not_of(" \t\n");
     if (start != std::string::npos) {
-      chunk = chunk.substr(start);
+      chunk.erase(0, start);
     }
     ss << "Source: " << source << " [chunk " << chunk_index << "]\n" << chunk << "\n";
   }
@@ -197,8 +197,7 @@ std::string resolve_output_path(const std::string &output_path, Format fmt,
 bool write_output(const TranscriptionResult &result, Format fmt, const std::string &output_path,
                   const std::string &source_filename) {
   std::string content = format_result(result, fmt, source_filename);
-  std::string final_path =
-      resolve_output_path(output_path, fmt, source_filename);
+  std::string final_path = resolve_output_path(output_path, fmt, source_filename);
 
   std::ofstream out(final_path);
   if (!out.is_open()) {

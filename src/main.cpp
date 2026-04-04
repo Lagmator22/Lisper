@@ -357,7 +357,7 @@ int main(int argc, char **argv) {
 
       std::string model_name = profile->filename;
       if (model_name.find("ggml-") == 0)
-        model_name = model_name.substr(5);
+        model_name.erase(0, 5);
       auto bin_pos = model_name.find(".bin");
       if (bin_pos != std::string::npos)
         model_name.resize(bin_pos);

@@ -16,7 +16,9 @@ namespace watcher {
 
 static std::atomic<bool> watch_interrupted(false);
 
-void interrupt_watch() { watch_interrupted = true; }
+void interrupt_watch() {
+  watch_interrupted = true;
+}
 
 std::vector<std::string> scan_directory(const std::string &dir) {
   std::vector<std::string> files;

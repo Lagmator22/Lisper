@@ -147,6 +147,7 @@ jobs:
       shell: cmd
       run: |
         copy C:\vcpkg\installed\x64-windows\bin\*.dll Release\
+        copy bin\Release\*.dll Release\
         Release\lisper.exe --help
         Release\lisper.exe --list-model-profiles
 

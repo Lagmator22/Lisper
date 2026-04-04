@@ -255,9 +255,7 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
   params.language = config_.language.c_str();
   params.n_threads = config_.threads;
   params.token_timestamps = true;
-  params.abort_callback = [](void *) {
-    return interrupt_state::is_interrupted();
-  };
+  params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
   params.abort_callback_user_data = nullptr;
 
   int ret = whisper_full(ctx_, params, pcm.data(), static_cast<int>(pcm.size()));

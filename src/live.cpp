@@ -122,7 +122,7 @@ void start_live_transcription(Lisper &engine) {
           // trim leading whitespace
           size_t first = clean_text.find_first_not_of(" \t\r\n");
           if (first != std::string::npos) {
-            clean_text = clean_text.substr(first);
+            clean_text.erase(0, first);
           }
           if (!clean_text.empty() && clean_text != "[BLANK_AUDIO]") {
             std::cout << clean_text << " " << std::flush;
