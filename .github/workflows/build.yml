@@ -194,7 +194,7 @@ jobs:
     - name: Check for version tag
       id: check_tag
       run: |
-        VERSION=$(grep "project(Lisper VERSION" CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+        VERSION=$(grep -i "project(lisper VERSION" CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
         echo "version=v$VERSION" >> $GITHUB_OUTPUT
         git fetch --tags
         if git rev-parse "v$VERSION" >/dev/null 2>&1; then
