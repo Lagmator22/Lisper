@@ -47,6 +47,8 @@ struct CliArgs {
   bool no_animate = false;
   bool list_profiles = false;
   bool no_flash_attn = false;
+  bool version = false;
+  bool parse_error = false;
   DeviceArg device = DeviceArg::Auto;
 };
 
@@ -220,7 +222,17 @@ static CliArgs parse_args(int argc, char **argv) {
       args.live = true;
     } else if (arg == "--translate") {
       args.translate = true;
-    } else if (arg[0] != '-') {
+    } else if (arg == "--version" || arg == "-v") {
+      args.version = true;
+    } else if (!arg.empty() && arg[0] == '-') {
+      std::cerr << "Unknown option: " << arg << " (use -h for help)\n";
+      args.parse_error = true;
+    } else if (!arg.empty()) {
+      if (!args.input_path.empty()) {
+        std::cerr << "Multiple input files given ('" << args.input_path << "' and '" << arg
+                  << "'). Use -d <dir> for batches.\n";
+        args.parse_error = true;
+      }
       args.input_path = arg;
     }
   }
@@ -333,6 +345,19 @@ int main(int argc, char **argv) {
   if (args.help) {
     print_usage();
     return 0;
+  }
+
+  if (args.version) {
+#ifdef LISPER_VERSION
+    std::cout << "lisper " << LISPER_VERSION << "\n";
+#else
+    std::cout << "lisper (version unknown)\n";
+#endif
+    return 0;
+  }
+
+  if (args.parse_error) {
+    return 2;
   }
 
   if (args.list_profiles) {

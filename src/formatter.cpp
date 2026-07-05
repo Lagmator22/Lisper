@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <cstdio>
 #include <sstream>
 
 namespace formatter {
@@ -57,7 +58,14 @@ static std::string escape_json(const std::string &s) {
       out += "\\t";
       break;
     default:
-      out += c;
+      // JSON forbids raw control characters; emit \u00XX for them.
+      if (static_cast<unsigned char>(c) < 0x20) {
+        char buf[8];
+        std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+        out += buf;
+      } else {
+        out += c;
+      }
     }
   }
   return out;

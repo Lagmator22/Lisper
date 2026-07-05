@@ -7,6 +7,7 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <map>
 #include <set>
 #include <thread>
 
@@ -46,6 +47,7 @@ bool watch_directory(const WatchConfig &config,
   watch_interrupted = false;
 
   std::set<std::string> known_files;
+  std::map<std::string, uintmax_t> pending_files;
 
   // index existing files so we only trigger on new ones
   for (const auto &f : scan_directory(config.watch_dir)) {
@@ -68,14 +70,32 @@ bool watch_directory(const WatchConfig &config,
 
     auto current = scan_directory(config.watch_dir);
     for (const auto &f : current) {
-      const auto [it, inserted] = known_files.insert(f);
-      if (inserted) {
-        std::cout << "New file detected: " << f << "\n";
-        on_new_file(f);
+      if (known_files.count(f)) {
+        continue;
+      }
+      // A file that just appeared may still be copying. Only fire once its
+      // size has settled between two consecutive scans.
+      std::error_code ec;
+      const auto size_now = fs::file_size(f, ec);
+      if (ec) {
+        continue;
+      }
+      auto pending_it = pending_files.find(f);
+      if (pending_it == pending_files.end()) {
+        pending_files[f] = size_now;
+        continue;
+      }
+      if (pending_it->second != size_now || size_now == 0) {
+        pending_it->second = size_now;
+        continue;
+      }
+      pending_files.erase(pending_it);
+      known_files.insert(f);
+      std::cout << "New file detected: " << f << "\n";
+      on_new_file(f);
 
-        if (watch_interrupted || interrupt_state::is_interrupted()) {
-          break;
-        }
+      if (watch_interrupted || interrupt_state::is_interrupted()) {
+        break;
       }
     }
   }

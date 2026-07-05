@@ -59,7 +59,28 @@ static bool ffmpeg_available() {
   return ret == 0;
 }
 
+// Paths are passed to ffmpeg through the shell. Quoting handles the normal
+// cases, but control characters (and double quotes on Windows, where cmd.exe
+// quoting is unreliable) are rejected outright.
+static bool path_is_shell_safe(const std::string &path) {
+  for (const char c : path) {
+    if (c == '\n' || c == '\r' || static_cast<unsigned char>(c) < 0x20) {
+      return false;
+    }
+#ifdef _WIN32
+    if (c == '"' || c == '%') {
+      return false;
+    }
+#endif
+  }
+  return true;
+}
+
 std::string extract_audio(const std::string &input_path, const std::string &tmp_dir) {
+  if (!path_is_shell_safe(input_path)) {
+    std::cerr << "Refusing to process a path with control characters: " << input_path << "\n";
+    return "";
+  }
   if (!ffmpeg_available()) {
     std::cerr << "ffmpeg not found. Install FFmpeg and ensure `ffmpeg` is in "
                  "your PATH.\n";

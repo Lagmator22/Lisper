@@ -44,6 +44,7 @@ else()
 endif()
 
 add_library(lisper_core STATIC ${LISPER_CORE_SOURCES})
+target_compile_definitions(lisper_core PUBLIC LISPER_VERSION="${PROJECT_VERSION}")
 
 target_include_directories(lisper_core PUBLIC
     ${CMAKE_SOURCE_DIR}/src

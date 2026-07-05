@@ -45,14 +45,18 @@ BackgroundTranscriber::~BackgroundTranscriber() {
 
 void BackgroundTranscriber::start(const JobRequest &request) {
   join_finished_worker();
-  interrupt_state::reset();
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
+    if (running_) {
+      // Assigning to a joinable std::thread would call std::terminate.
+      return;
+    }
     completed_.reset();
     running_ = true;
     status_ = "Loading model";
   }
+  interrupt_state::reset();
 
   worker_ = std::thread([this, request]() { run_job(request); });
 }

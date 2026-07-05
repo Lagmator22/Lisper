@@ -12,6 +12,9 @@ Local speech-to-text engine built in C++. Transcribes audio and video files usin
 
 </div>
 
+
+> New to the codebase? Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), a plain-language tour of every file.
+
 ## Key Features
 
 - **Multi-format Support**: Transcribe audio (WAV, MP3, FLAC, OGG, M4A, AAC, WMA, AIFF) and video files (MP4, MKV, AVI, WEBM, MOV)

@@ -68,8 +68,8 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
   uint32_t chunk_size;
   file.read(reinterpret_cast<char *>(&chunk_size), 4);
 
-  // Validate chunk size
-  if (chunk_size + 8 > file_size) {
+  // Validate chunk size (widen before adding so a huge value can't wrap)
+  if (static_cast<uint64_t>(chunk_size) + 8 > file_size) {
     std::cerr << "Invalid chunk size in WAV header\n";
     return false;
   }
@@ -176,8 +176,12 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
         return false;
       }
 
-      file.read(reinterpret_cast<char *>(raw.data()), static_cast<std::streamsize>(sub_size));
-      if (file.gcount() != static_cast<std::streamsize>(sub_size)) {
+      // Read exactly the bytes the buffer holds. An odd sub_size would
+      // otherwise read one byte past the end of `raw`.
+      const std::streamsize want =
+          static_cast<std::streamsize>(num_samples * bytes_per_sample);
+      file.read(reinterpret_cast<char *>(raw.data()), want);
+      if (file.gcount() != want) {
         std::cerr << "Failed to read audio data\n";
         return false;
       }
