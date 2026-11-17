@@ -461,7 +461,6 @@ int main(int argc, char **argv) {
 
     watcher::WatchConfig wconf;
     wconf.watch_dir = args.watch_dir;
-    wconf.output_dir = args.output_path;
 
     watcher::watch_directory(wconf, [&](const std::string &path) {
       transcribe_file(engine, path, fmt, args.output_path);

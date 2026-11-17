@@ -3,10 +3,10 @@
 #include "media.h"
 
 #include <algorithm>
-#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <map>
 #include <set>
 #include <thread>
 
@@ -14,19 +14,17 @@ namespace fs = std::filesystem;
 
 namespace watcher {
 
-static std::atomic<bool> watch_interrupted(false);
-
-void interrupt_watch() {
-  watch_interrupted = true;
-}
-
 std::vector<std::string> scan_directory(const std::string &dir) {
   std::vector<std::string> files;
-  if (!fs::is_directory(dir))
+  std::error_code ec;
+  if (!fs::is_directory(dir, ec))
     return files;
 
-  for (const auto &entry : fs::directory_iterator(dir)) {
-    if (entry.is_regular_file() && media::is_media_file(entry.path().string())) {
+  for (fs::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
+    const auto &entry = *it;
+    std::error_code entry_ec;
+    if (entry.is_regular_file(entry_ec) && !entry_ec &&
+        media::is_media_file(entry.path().string())) {
       files.push_back(entry.path().string());
     }
   }
@@ -42,10 +40,9 @@ bool watch_directory(const WatchConfig &config,
     return false;
   }
 
-  // Reset the interrupt flag
-  watch_interrupted = false;
-
   std::set<std::string> known_files;
+  // Candidate files and the size observed on the previous poll.
+  std::map<std::string, uintmax_t> pending;
 
   // index existing files so we only trigger on new ones
   for (const auto &f : scan_directory(config.watch_dir)) {
@@ -54,28 +51,39 @@ bool watch_directory(const WatchConfig &config,
 
   std::cout << "Watching " << config.watch_dir << " for new media files. Press Ctrl+C to stop.\n";
 
-  while (!watch_interrupted && !interrupt_state::is_interrupted()) {
+  const int poll_ticks = std::max(1, config.poll_interval_sec) * 10;
+  while (!interrupt_state::is_interrupted()) {
     // Use shorter sleep intervals for more responsive shutdown
-    for (int i = 0; i < config.poll_interval_sec * 10 && !watch_interrupted &&
-                    !interrupt_state::is_interrupted();
-         i++) {
+    for (int i = 0; i < poll_ticks && !interrupt_state::is_interrupted(); i++) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    if (watch_interrupted || interrupt_state::is_interrupted()) {
+    if (interrupt_state::is_interrupted()) {
       break;
     }
 
-    auto current = scan_directory(config.watch_dir);
-    for (const auto &f : current) {
-      const auto [it, inserted] = known_files.insert(f);
-      if (inserted) {
-        std::cout << "New file detected: " << f << "\n";
-        on_new_file(f);
+    for (const auto &f : scan_directory(config.watch_dir)) {
+      if (known_files.count(f) != 0) {
+        continue;
+      }
+      std::error_code ec;
+      const uintmax_t size = fs::file_size(f, ec);
+      if (ec) {
+        continue;
+      }
+      auto it = pending.find(f);
+      if (it == pending.end() || it->second != size || size == 0) {
+        pending[f] = size; // still growing (or first sighting); check next poll
+        continue;
+      }
 
-        if (watch_interrupted || interrupt_state::is_interrupted()) {
-          break;
-        }
+      pending.erase(it);
+      known_files.insert(f);
+      std::cout << "New file detected: " << f << "\n";
+      on_new_file(f);
+
+      if (interrupt_state::is_interrupted()) {
+        break;
       }
     }
   }

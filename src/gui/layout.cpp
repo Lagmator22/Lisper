@@ -38,8 +38,7 @@ void draw_flow_pill(bool &first, const std::string &text, const ImVec4 &text_col
   draw_pill(text, text_color, bg_color);
 }
 
-void render_header_status_card(const AppState &state, BackgroundTranscriber &job,
-                               const ImVec2 &size) {
+void render_header_status_card(BackgroundTranscriber &job, const ImVec2 &size) {
   const ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
   if (!begin_surface("header_status_panel", size, true, flags)) {
     end_surface();
@@ -110,7 +109,7 @@ void render_header(const Fonts &fonts, const AppState &state, BackgroundTranscri
                      color_v4(145, 152, 161), color_v4(22, 27, 34, 220));
 
       ImGui::TableNextColumn();
-      render_header_status_card(state, job, ImVec2(0.0f, 80.0f));
+      render_header_status_card(job, ImVec2(0.0f, 80.0f));
       ImGui::EndTable();
     } else {
       if (fonts.hero != nullptr) {
@@ -142,7 +141,7 @@ void render_header(const Fonts &fonts, const AppState &state, BackgroundTranscri
                      color_v4(145, 152, 161), color_v4(22, 27, 34, 220));
 
       ImGui::Spacing();
-      render_header_status_card(state, job, ImVec2(0.0f, 72.0f));
+      render_header_status_card(job, ImVec2(0.0f, 72.0f));
     }
   }
   end_surface();
@@ -170,23 +169,16 @@ void render_input_section(AppState &state) {
     copy_string(state.input_path, "");
   }
 
-  const bool sample_wav = path_exists("jfk.wav");
-  const bool sample_aiff = path_exists("test.aiff");
-
-  if (sample_wav) {
-    if (choice_button("Use sample WAV", false, ImVec2(button_w, 0.0f))) {
-      copy_string(state.input_path, fs::absolute("jfk.wav").string());
-      append_log(state, "Loaded bundled WAV sample.");
-    }
-  }
-
-  if (sample_aiff) {
-    if (sample_wav) {
-      ImGui::SameLine();
-    }
-    if (choice_button("Use sample AIFF", false, ImVec2(button_w, 0.0f))) {
-      copy_string(state.input_path, fs::absolute("test.aiff").string());
-      append_log(state, "Loaded bundled AIFF sample.");
+  // whisper.cpp ships sample clips; offer them when running from a checkout.
+  static const char *kSampleWav[] = {"third_party/whisper.cpp/samples/jfk.wav",
+                                     "../third_party/whisper.cpp/samples/jfk.wav"};
+  for (const char *sample : kSampleWav) {
+    if (path_exists(sample)) {
+      if (choice_button("Use sample clip", false, ImVec2(-1.0f, 0.0f))) {
+        copy_string(state.input_path, fs::absolute(sample).string());
+        append_log(state, "Loaded bundled sample clip.");
+      }
+      break;
     }
   }
 

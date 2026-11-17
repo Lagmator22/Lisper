@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -31,10 +32,12 @@ struct LisperConfig {
   std::string language = "en";
   int threads = 4;
   bool translate = false;
-  bool print_progress = true;
   Device device = Device::Auto;
   int gpu_device = 0;
   bool flash_attn = true;
+  // Optional text that biases decoding toward specific vocabulary (names,
+  // jargon). Used for the personal dictionary in dictation mode.
+  std::string initial_prompt;
 };
 
 class Lisper {
@@ -45,18 +48,26 @@ public:
   Lisper(const Lisper &) = delete;
   Lisper &operator=(const Lisper &) = delete;
 
+  // Transcribe a 16 kHz mono 16-bit PCM WAV file (see media::prepare_audio).
   TranscriptionResult transcribe(const std::string &audio_path);
+
+  // Transcribe raw 16 kHz mono float samples in [-1, 1]. `prompt` overrides
+  // config.initial_prompt when non-empty. Thread-safe: calls are serialized.
+  TranscriptionResult transcribe_pcm(const std::vector<float> &pcm, bool single_segment = false,
+                                     const std::string &prompt = "");
 
   bool is_loaded() const;
   int threads() const { return config_.threads; }
   bool translate() const { return config_.translate; }
   const std::string &language() const { return config_.language; }
 
-  struct whisper_context *get_ctx() const { return ctx_; }
+  const LisperConfig &config() const { return config_; }
+  void set_initial_prompt(const std::string &prompt);
 
 private:
   struct whisper_context *ctx_ = nullptr;
   LisperConfig config_;
+  std::mutex mutex_;
 
   bool load_wav(const std::string &path, std::vector<float> &pcm, int &sample_rate);
 };

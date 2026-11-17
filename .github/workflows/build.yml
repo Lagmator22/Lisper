@@ -82,6 +82,9 @@ jobs:
         # Run basic smoke test
         ./lisper --help
         ./lisper --list-model-profiles
+        ctest --output-on-failure
+        # End-to-end transcription with the tiny model
+        ./lisper --no-animate -m models/ggml-tiny.bin ../third_party/whisper.cpp/samples/jfk.wav
 
   build-macos:
     runs-on: macos-latest
@@ -101,7 +104,8 @@ jobs:
         cmake -B ${{github.workspace}}/build \
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
           -DLISPER_ENABLE_LIVE=ON \
-          -DWHISPER_METAL=ON
+          -DLISPER_BUILD_TESTS=ON \
+          -DGGML_METAL=ON
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j$(sysctl -n hw.ncpu)
@@ -111,6 +115,7 @@ jobs:
       run: |
         ./lisper --help
         ./lisper --list-model-profiles
+        ctest --output-on-failure
 
   build-windows:
     runs-on: windows-latest

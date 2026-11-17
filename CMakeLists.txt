@@ -6,10 +6,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(LISPER_BUILD_GUI "Build the Lisper desktop GUI" ON)
+option(LISPER_ENABLE_LIVE "Enable microphone capture (live mode, dictation) when SDL2 is available" ON)
+option(LISPER_BUILD_TESTS "Build the Lisper unit tests" OFF)
 
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(SDL2 QUIET sdl2 IMPORTED_TARGET)
+include(GNUInstallDirs)
+
+set(SDL2_FOUND FALSE)
+if(LISPER_ENABLE_LIVE OR LISPER_BUILD_GUI)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(SDL2 QUIET sdl2 IMPORTED_TARGET)
+    endif()
+    # vcpkg / SDL2Config.cmake fallback (Windows and some macOS setups)
+    if(NOT SDL2_FOUND)
+        find_package(SDL2 CONFIG QUIET)
+        if(TARGET SDL2::SDL2)
+            add_library(PkgConfig::SDL2 INTERFACE IMPORTED)
+            target_link_libraries(PkgConfig::SDL2 INTERFACE SDL2::SDL2)
+            set(SDL2_FOUND TRUE)
+        endif()
+    endif()
 endif()
 
 # whisper.cpp build options
@@ -39,7 +55,7 @@ set(LISPER_CORE_SOURCES
     src/model_download.cpp
 )
 
-if(SDL2_FOUND)
+if(SDL2_FOUND AND LISPER_ENABLE_LIVE)
     list(APPEND LISPER_CORE_SOURCES src/live.cpp)
     message(STATUS "SDL2 found - enabling live transcription feature")
 else()
@@ -49,13 +65,13 @@ endif()
 add_library(lisper_core STATIC ${LISPER_CORE_SOURCES})
 
 target_include_directories(lisper_core PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/lisper>
 )
 
 target_link_libraries(lisper_core PUBLIC whisper)
 
-if(SDL2_FOUND)
-    target_include_directories(lisper_core PRIVATE ${SDL2_INCLUDE_DIRS})
+if(SDL2_FOUND AND LISPER_ENABLE_LIVE)
     target_link_libraries(lisper_core PUBLIC PkgConfig::SDL2)
     target_compile_definitions(lisper_core PUBLIC LISPER_ENABLE_LIVE)
 endif()
@@ -107,3 +123,23 @@ endif()
 if(APPLE)
     target_link_libraries(lisper_core PUBLIC "-framework Foundation")
 endif()
+
+if(LISPER_BUILD_TESTS)
+    enable_testing()
+    add_executable(lisper_tests tests/unit_tests.cpp)
+    target_link_libraries(lisper_tests PRIVATE lisper_core)
+    add_test(NAME lisper_unit_tests COMMAND lisper_tests)
+    set_tests_properties(lisper_unit_tests PROPERTIES
+        ENVIRONMENT "LISPER_SAMPLE_WAV=${CMAKE_SOURCE_DIR}/third_party/whisper.cpp/samples/jfk.wav")
+endif()
+
+# ---------------------------------------------------------------------------
+# Install
+# ---------------------------------------------------------------------------
+install(TARGETS lisper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(TARGET lisper_gui)
+    install(TARGETS lisper_gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
+install(FILES
+    src/lisper.h src/formatter.h src/media.h src/model_profiles.h src/paths.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/lisper)

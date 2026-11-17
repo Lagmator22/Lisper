@@ -222,6 +222,11 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
   return false;
 }
 
+void Lisper::set_initial_prompt(const std::string &prompt) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  config_.initial_prompt = prompt;
+}
+
 TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
   TranscriptionResult result;
 
@@ -238,26 +243,46 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
     return result;
   }
 
-  // whisper expects 16kHz mono. if the wav is at a different rate we should
-  // have already resampled via ffmpeg, but warn just in case.
   if (sample_rate != WHISPER_SAMPLE_RATE) {
-    std::cerr << "Warning: sample rate is " << sample_rate << "Hz, expected " << WHISPER_SAMPLE_RATE
-              << "Hz.\n"
-              << "Use FFmpeg to convert: ffmpeg -i input -ar 16000 -ac 1 "
-                 "output.wav\n";
+    result.error = "Expected 16 kHz audio but got " + std::to_string(sample_rate) +
+                   " Hz; prepare the file with media::prepare_audio first";
+    return result;
   }
+
+  return transcribe_pcm(pcm);
+}
+
+TranscriptionResult Lisper::transcribe_pcm(const std::vector<float> &pcm, bool single_segment,
+                                           const std::string &prompt) {
+  TranscriptionResult result;
+  if (!ctx_) {
+    result.error = "Model not loaded";
+    return result;
+  }
+  if (pcm.empty()) {
+    result.error = "No audio samples";
+    return result;
+  }
+
+  std::lock_guard<std::mutex> lock(mutex_);
 
   result.duration_ms = static_cast<int>((pcm.size() * 1000) / WHISPER_SAMPLE_RATE);
 
+  const std::string language = config_.language.empty() ? "auto" : config_.language;
+  const std::string effective_prompt = prompt.empty() ? config_.initial_prompt : prompt;
+
   whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
   params.print_realtime = false;
-  params.print_progress = config_.print_progress;
+  params.print_progress = false;
   params.print_timestamps = false;
   params.print_special = false;
   params.translate = config_.translate;
-  params.language = config_.language.c_str();
+  params.language = language.c_str();
+  params.detect_language = false;
   params.n_threads = config_.threads;
-  params.token_timestamps = true;
+  params.single_segment = single_segment;
+  params.token_timestamps = !single_segment;
+  params.initial_prompt = effective_prompt.empty() ? nullptr : effective_prompt.c_str();
   params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
   params.abort_callback_user_data = nullptr;
 
@@ -289,7 +314,10 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
   }
 
   result.full_text = full_text;
-  result.detected_language = config_.language;
+  // Report the language whisper actually used (resolves "auto").
+  const int lang_id = whisper_full_lang_id(ctx_);
+  const char *lang = lang_id >= 0 ? whisper_lang_str(lang_id) : nullptr;
+  result.detected_language = lang != nullptr ? lang : language;
   result.success = true;
 
   return result;
