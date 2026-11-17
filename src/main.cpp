@@ -4,7 +4,9 @@
 #include "lisper.h"
 #include "live.h"
 #include "media.h"
+#include "model_download.h"
 #include "model_profiles.h"
+#include "paths.h"
 #include "watcher.h"
 
 #include <chrono>
@@ -47,6 +49,7 @@ struct CliArgs {
   bool no_animate = false;
   bool list_profiles = false;
   bool no_flash_attn = false;
+  bool download_model = false;
   DeviceArg device = DeviceArg::Auto;
 };
 
@@ -98,6 +101,8 @@ static void print_usage() {
             << "     Path to a Whisper GGML model file\n";
   std::cout << "  " << cli_style::gradient_text("--model-profile <name>", false)
             << " Model profile: fast, balanced, quality, max\n";
+  std::cout << "  " << cli_style::gradient_text("--download-model", false)
+            << "       Download the profile model if missing (HTTPS)\n";
   std::cout << "  " << cli_style::gradient_text("--list-model-profiles", false)
             << "  Show model profiles and exit\n";
   std::cout << "  " << cli_style::gradient_text("-f, --format <fmt>", false)
@@ -183,8 +188,8 @@ static CliArgs parse_args(int argc, char **argv) {
     } else if ((arg == "-t" || arg == "--threads") && i + 1 < argc) {
       try {
         args.threads = std::stoi(argv[++i]);
-        if (args.threads <= 0) {
-          std::cerr << "Error: thread count must be positive\n";
+        if (args.threads <= 0 || args.threads > 256) {
+          std::cerr << "Error: thread count must be between 1 and 256\n";
           args.threads = 4; // Reset to default
         }
       } catch (const std::exception &e) {
@@ -210,6 +215,8 @@ static CliArgs parse_args(int argc, char **argv) {
         std::cerr << "Error: invalid GPU device index\n";
         args.gpu_device = 0;
       }
+    } else if (arg == "--download-model") {
+      args.download_model = true;
     } else if (arg == "--no-flash-attn") {
       args.no_flash_attn = true;
     } else if (arg == "--no-color") {
@@ -348,39 +355,18 @@ int main(int argc, char **argv) {
 
   std::string model_path = resolve_model_path(args.model_path, args.model_profile);
 
-  if (model_path.empty() && args.model_path.empty()) {
+  if (model_path.empty() && args.model_path.empty() && args.download_model) {
     const ModelProfile *profile = find_model_profile(args.model_profile);
     if (profile != nullptr) {
-      std::cout << cli_style::style("Model not found locally. Auto-downloading profile '" +
-                                        args.model_profile + "'...\n",
+      std::cout << cli_style::style("Downloading model for profile '" + args.model_profile +
+                                        "' into " + paths::models_dir() + "\n",
                                     cli_style::Tone::Warning);
-
-      std::string model_name = profile->filename;
-      if (model_name.find("ggml-") == 0)
-        model_name.erase(0, 5);
-      auto bin_pos = model_name.find(".bin");
-      if (bin_pos != std::string::npos)
-        model_name.resize(bin_pos);
-
-      std::string script_path = "./third_party/whisper.cpp/models/download-ggml-model.sh";
-      std::string out_dir = "models";
-      if (!fs::exists(script_path) &&
-          fs::exists("../third_party/whisper.cpp/models/download-ggml-model.sh")) {
-        script_path = "../third_party/whisper.cpp/models/download-ggml-model.sh";
-        if (!fs::exists("models")) {
-          out_dir = "../models";
-        }
-      }
-
-      std::string cmd = script_path + " " + model_name + " " + out_dir;
-      std::cout << cli_style::style("Executing: " + cmd, cli_style::Tone::Muted) << "\n";
-
-      int res = std::system(cmd.c_str());
-      if (res == 0) {
-        model_path = resolve_model_path("", args.model_profile);
-        std::cout << cli_style::style("Download complete.\n", cli_style::Tone::Success);
+      std::string error;
+      model_path = model_download::download_profile(*profile, error);
+      if (model_path.empty()) {
+        std::cerr << "Failed to download model: " << error << "\n";
       } else {
-        std::cerr << "Failed to download model.\n";
+        std::cout << cli_style::style("Download complete.\n", cli_style::Tone::Success);
       }
     }
   }
@@ -392,9 +378,8 @@ int main(int argc, char **argv) {
     } else {
       std::cerr << "Model not found: " << args.model_path << "\n";
     }
-    std::cerr << "Tip: download profile models with:\n";
-    std::cerr << "  ./third_party/whisper.cpp/models/download-ggml-model.sh "
-                 "large-v3-turbo-q5_0 models\n";
+    std::cerr << "Tip: download the profile model with:\n";
+    std::cerr << "  lisper --model-profile " << args.model_profile << " --download-model\n";
     return 1;
   }
 
@@ -476,7 +461,6 @@ int main(int argc, char **argv) {
 
     watcher::WatchConfig wconf;
     wconf.watch_dir = args.watch_dir;
-    wconf.output_dir = args.output_path;
 
     watcher::watch_directory(wconf, [&](const std::string &path) {
       transcribe_file(engine, path, fmt, args.output_path);

@@ -1,279 +1,186 @@
-# Lisper - Local Speech-to-Text Engine
+# Lisper
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+**Private, on-device voice dictation and transcription.**
+Press a shortcut in any app, speak, and Lisper types it for you, cleaned up and spelled your way.
+Nothing leaves your computer.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B17)
-[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](https://github.com/Lagmator22/Lisper)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](BUILDING.md)
+[![MCP](https://img.shields.io/badge/MCP-server-6c5ce7.svg)](docs/MCP.md)
 
-Local speech-to-text engine built in C++. Transcribes audio and video files using [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
-
-**Privacy-first design** - All transcription happens locally on your hardware. No cloud APIs, no data leaves your machine.
+<img src="docs/images/home.png" alt="Lisper home screen" width="820">
 
 </div>
 
-## Key Features
+## What it does
 
-- **Multi-format Support**: Transcribe audio (WAV, MP3, FLAC, OGG, M4A, AAC, WMA, AIFF) and video files (MP4, MKV, AVI, WEBM, MOV)
-- **Multiple Output Formats**: Plain text, SRT subtitles, JSON with timestamps, RAG-ready chunks
-- **Batch Processing**: Transcribe entire directories in one command
-- **Watch Mode**: Monitor folders and auto-transcribe new files as they appear
-- **Live Transcription**: Real-time microphone transcription (when compiled with SDL2)
-- **Model Profiles**: Pre-configured settings for fast/balanced/quality/max transcription
-- **Cross-platform**: Works on macOS, Windows, and Linux
-- **Hardware Acceleration**: Broad hardware support via whisper.cpp backends
-- **Desktop GUI**: Native application with drag-and-drop support
-- **Beautiful CLI**: Animated interface with gradient styling and progress indicators
+**Dictate anywhere.** On a Mac, tap <kbd>⌘</kbd> and <kbd>⌥</kbd> together in any text field
+(on Windows and Linux: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>; any shortcut or modifier
+chord works, as a toggle or hold-to-talk). A black island grows out of the MacBook notch, shows
+your voice as a live waveform and **writes your words as you speak**. Tap again and Lisper
+finishes the transcript locally with [whisper.cpp](https://github.com/ggerganov/whisper.cpp),
+cleans it up and types it where your cursor is. When it's idle, the island hides back in the notch.
 
-## Quick Start
+<div align="center">
+<img src="docs/images/island.png" alt="The island: listening with live words, writing, done" width="820">
+</div>
 
-### Prerequisites
+- **Cleanup:** removes filler words ("um", "uh"), understands "new line" / "new paragraph",
+  formal or casual style.
+- **Dictionary:** fix words it mishears ("lisa per" → "Lisper") and give it vocabulary
+  (names, jargon, acronyms) so it spells them right the first time.
+- **Snippets:** say "my calendar link" and get the full URL, an address, or a sign-off.
+- **History and stats:** searchable local history, words dictated, words per minute,
+  streak and time saved. Can be switched off.
+- **99 languages**, auto-detected, with optional translation to English.
 
-- CMake 3.14+
-- C++17 compiler (GCC 7+, Clang 5+, MSVC 2017+)
-- FFmpeg (for audio/video processing)
-- SDL2 (optional, for GUI and live transcription)
+**Transcribe files.** Drop in recordings, meetings or videos (WAV, MP3, M4A, FLAC, OGG, MP4, MOV,
+MKV, WEBM, ...) and get text, SRT subtitles, JSON with timestamps, or RAG-ready chunks.
+The CLI adds batch and watch-folder modes.
 
-#### Install dependencies
+**Use it from AI assistants.** `lisper-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io)
+server, so Claude Desktop, Claude Code, Cursor, VS Code and other MCP clients can transcribe files
+or take dictation through Lisper, still fully on-device. See [docs/MCP.md](docs/MCP.md).
 
-**macOS:**
-```bash
-brew install cmake ffmpeg sdl2
-```
+<div align="center">
+<img src="docs/images/dictating.png" alt="Dictating: live words on Home and in the island" width="410">
+<img src="docs/images/dark.png" alt="Dark theme" width="410">
+</div>
 
-**Ubuntu/Debian:**
-```bash
-sudo apt-get update
-sudo apt-get install cmake build-essential ffmpeg libsdl2-dev
-```
+## Install
 
-**Windows:**
-- Install [Visual Studio 2019+](https://visualstudio.microsoft.com/) with C++ workload
-- Install [CMake](https://cmake.org/download/)
-- Install [FFmpeg](https://ffmpeg.org/download.html) and add to PATH
-- Install [SDL2](https://www.libsdl.org/download-2.0.php) (optional)
-
-### Build from Source
+Build from source (see [BUILDING.md](BUILDING.md) for platform details):
 
 ```bash
-# Clone the repository
 git clone --recursive https://github.com/Lagmator22/Lisper.git
 cd Lisper
-
-# Build the project
-cmake -B build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
-
-# Download a model (required for transcription)
-cd models
-# Choose one:
-wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin     # Fast (190MB)
-wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin  # Quality (574MB)
-cd ..
-
-# Test the installation
-./build/lisper --help
+sudo cmake --install build      # optional: installs lisper, lisper_gui, lisper-mcp
 ```
 
-## Usage Examples
+Requirements: CMake 3.14+, a C++17 compiler, FFmpeg (for non-WAV input), SDL2 ≥ 2.0.18
+(for the desktop app and microphone), and curl (for model downloads).
 
-### CLI - Simple Transcription
+Then start the app and download a model from **Settings → Speech model**, or from the CLI:
 
 ```bash
-# Transcribe using auto-selected model profile
-./build/lisper --model-profile quality recording.wav
-
-# Transcribe with specific model
-./build/lisper -m models/ggml-large-v3-turbo-q5_0.bin audio.mp3
-
-# Generate SRT subtitles
-./build/lisper --model-profile quality video.mp4 -f srt -o video.srt
-
-# JSON output with timestamps
-./build/lisper -m models/ggml-small-q5_1.bin podcast.mp3 -f json -o transcript.json
+lisper --model-profile quality --download-model
 ```
 
-### CLI - Advanced Features
+### Platform notes
+
+| | Global shortcut | Paste into apps | Notes |
+|---|---|---|---|
+| **macOS** | Built in (default: tap ⌘⌥) | Built in | Grant **Microphone** and **Accessibility** access when prompted. The island sits in the notch on MacBooks, or hangs from the menu bar on other displays. |
+| **Windows** | Built in | Built in | Apps running as administrator can't receive paste from a normal app. |
+| **Linux (X11)** | Built in | Install `xdotool` | |
+| **Linux (Wayland)** | Bind a system shortcut to `lisper_gui --toggle` | Install `wtype` | Compositors don't allow apps to grab global keys. |
+
+## Using the desktop app
 
 ```bash
-# Batch transcribe all media in a directory
-./build/lisper --model-profile quality -d ./recordings/ -o ./transcripts/
-
-# Watch mode - auto-transcribe new files as they appear
-./build/lisper --model-profile quality -w ./inbox/ -o ./transcripts/ -f srt
-
-# Live microphone transcription (requires SDL2)
-./build/lisper --model-profile fast --live
-
-# Translate to English
-./build/lisper -m models/ggml-large-v3-turbo-q5_0.bin spanish_audio.mp3 --translate
-
-# Force CPU mode (useful for testing)
-./build/lisper --model-profile quality --device cpu recording.wav
-
-# RAG-ready output (chunked for vector databases)
-./build/lisper --model-profile quality document.mp4 -f rag -o ./knowledge_base/
+lisper_gui                 # start (a second launch focuses the running app)
+lisper_gui --toggle        # start/stop dictation in the running app
+lisper_gui --minimized     # start in the background
+lisper_gui recording.m4a   # open a file on the Transcribe page
 ```
 
-### GUI Application
+Closing the window minimizes Lisper so the shortcut keeps working (configurable).
+Use **Settings → Quit Lisper** to exit.
+
+**Shortcuts.** Tap the shortcut to start and tap again to insert, or switch to hold-to-talk.
+Modifier-only chords such as ⌘⌥ only fire on a clean tap, so ⌘⌥Esc, ⌘⌥-drag or AltGr typing never
+start a dictation. Record any shortcut in **Settings → Shortcut**.
+
+**The island** shows a live waveform from your microphone, a timer, and your words while you
+talk (turn off *Live preview* to save CPU on slow machines). Click it to stop. If Lisper can't paste
+into the app (for example a missing `xdotool` on Linux), the island says *Copied* and the text is
+on your clipboard.
+
+| Page | What's there |
+|---|---|
+| Home | Dictation card, stats, searchable history (copy or delete entries) |
+| Transcribe files | Drop zone, output format, save location, transcript preview |
+| Dictionary | Replacements and vocabulary |
+| Snippets | Spoken cues that expand to text |
+| Style | Formal/casual, filler removal, voice commands |
+| Settings | Shortcut, microphone, insertion, live preview, island position, sounds, model, language, theme, privacy, MCP setup |
+
+## Command line
 
 ```bash
-# Launch the desktop application
-./build/lisper_gui
+lisper --model-profile quality recording.wav                 # print transcript
+lisper --model-profile quality video.mp4 -f srt -o video.srt  # subtitles
+lisper -m model.bin podcast.mp3 -f json -o transcript.json   # timestamps
+lisper --model-profile quality -d ./recordings -o ./out      # batch a folder
+lisper --model-profile quality -w ./inbox -o ./out -f srt    # watch a folder
+lisper --model-profile fast --live                           # live mic (Ctrl+C to stop)
+lisper -l auto --translate interview.mp3                     # any language → English
 ```
 
-The GUI provides:
-- Drag-and-drop file selection
-- Visual waveform display
-- Real-time transcription progress
-- Model selection interface
-- Export options for all formats
-- Batch processing support
-- Settings persistence
+Run `lisper --help` for all options.
 
-## Model Profiles
+### Model profiles
 
-Pre-configured profiles for different use cases:
+| Profile | Model | Size | Use case |
+|---|---|---|---|
+| `tiny` | tiny | 75 MB | Instant dictation on any machine, quick tests |
+| `fast` | small-q5_1 | 190 MB | Fast drafts on CPU |
+| `balanced` | medium-q5_0 | 514 MB | Everyday transcripts |
+| `quality` | large-v3-turbo-q5_0 | 574 MB | Best quality/speed trade-off (default) |
+| `max` | large-v3 | 3.1 GB | Maximum accuracy |
 
-| Profile | Model | Size | Use Case |
-|---------|-------|------|----------|
-| `fast` | small-q5_1 | 190MB | Quick drafts, real-time transcription |
-| `balanced` | medium-q5_0 | 514MB | General use, good accuracy/speed balance |
-| `quality` | large-v3-turbo-q5_0 | 574MB | Best quality/speed tradeoff |
-| `max` | large-v3 | 1.5GB | Maximum accuracy, when latency doesn't matter |
+Models are stored per user (`~/Library/Application Support/Lisper/models`, `%APPDATA%\Lisper\models`,
+or `~/.local/share/lisper/models`); override with `LISPER_MODELS_DIR`.
 
-Use `./build/lisper --list-model-profiles` to see all available profiles.
+### Output formats
 
-## Output Formats
+| Format | Flag | Description |
+|---|---|---|
+| Text | `-f text` | Plain transcript (default) |
+| SRT | `-f srt` | Subtitles with timestamps |
+| JSON | `-f json` | Text plus timestamped segments and detected language |
+| RAG | `-f rag` | ~400-character chunks split at sentence boundaries, for vector databases |
 
-| Format | Flag | Description | Example Use |
-|--------|------|-------------|-------------|
-| Text | `-f text` | Plain transcription text (default) | Documentation, notes |
-| SRT | `-f srt` | SubRip subtitle format with timestamps | Video subtitles |
-| JSON | `-f json` | Structured output with word-level timestamps | Analysis, processing |
-| RAG | `-f rag` | Chunked text optimized for vector databases | AI knowledge bases |
+## Privacy and security
 
-## Live Transcription Mode
+- Speech is transcribed on your device. Audio is never uploaded and recordings are not saved.
+- Settings and history are stored in your user profile with owner-only permissions.
+  History can be disabled or cleared.
+- The only network access is downloading models from Hugging Face over HTTPS, when you ask for it.
+- External tools (ffmpeg, curl, paste helpers) are launched without a shell, and ffmpeg is limited
+  to local files.
 
-When compiled with SDL2 support, Lisper can transcribe from your microphone in real-time:
+See [SECURITY.md](SECURITY.md) for the threat model and how to report a vulnerability.
 
-```bash
-# Start live transcription
-./build/lisper --model-profile fast --live
-
-# Controls:
-# - Press SPACE to pause/resume
-# - Press ENTER to save current transcript
-# - Press ESC to exit
-```
-
-Live mode features:
-- Real-time speech detection
-- Automatic silence detection
-- Rolling buffer for continuous transcription
-- Low-latency processing
-- Adjustable sensitivity
-
-## Performance Optimization
-
-### Performance Tips
-
-1. **Model Selection**: Choose the smallest model that meets your accuracy needs
-2. **Thread Count**: Use `-t` to adjust threads (default: 4)
-3. **Device Selection**: Use `--device gpu` for supported hardware
-4. **Flash Attention**: Enabled by default, disable with `--no-flash-attn` if issues occur
-5. **Batch Processing**: Process multiple files together for better efficiency
-
-## Architecture
+## Project layout
 
 ```
-Lisper/
-├── src/
-│   ├── main.cpp              # CLI entry point
-│   ├── gui_main.cpp          # GUI entry point
-│   ├── lisper.cpp            # Core transcription engine
-│   ├── media.cpp             # Audio/video processing
-│   ├── formatter.cpp         # Output formatting
-│   ├── live.cpp              # Real-time transcription
-│   ├── watcher.cpp           # Directory monitoring
-│   └── gui/                  # GUI components
-│       ├── theme.cpp         # Visual styling
-│       ├── layout.cpp        # UI layout
-│       └── state.cpp         # Application state
-├── models/                   # Model storage (gitignored)
-├── docs/                     # Documentation
-└── third_party/
-    └── whisper.cpp/          # Whisper engine (submodule)
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**"Model not found" error:**
-- Ensure you've downloaded a model to the `models/` directory
-- Check the model filename matches the profile or path specified
-
-**"SDL_Init Error" when using --live:**
-- Install SDL2 development libraries
-- Rebuild with SDL2 support: `cmake -B build -DLISPER_ENABLE_LIVE=ON`
-
-**Poor transcription quality:**
-- Try a larger model (quality or max profile)
-- Ensure audio is clear and properly formatted
-- Check language setting matches audio language
-
-**FFmpeg errors:**
-- Verify FFmpeg is installed and in PATH
-- Check input file format is supported
-- Try converting to WAV format first
-
-### Debug Mode
-
-Enable verbose output for troubleshooting:
-```bash
-# Set environment variable
-export WHISPER_DEBUG=1
-./build/lisper --model-profile quality audio.wav
+src/
+  lisper.*          Engine (whisper.cpp wrapper, thread-safe, cancellable)
+  media.*           Audio preparation via ffmpeg (shell-free)
+  text_cleanup.*    Fillers, voice commands, dictionary, snippets, style
+  settings.*        Persistent settings (JSON)
+  history.*         Dictation history and stats (JSONL)
+  audio_capture.*   Microphone capture (SDL2)
+  mcp_server.*      MCP server; mcp_main.cpp is the lisper-mcp entry point
+  main.cpp          CLI
+  gui_app.cpp       Desktop app shell
+  gui/              Pages, theme, dictation controller, notch island,
+                    global shortcuts and chords, paste, platform glue
+                    (platform_mac.mm), single-instance control
+tests/              Unit tests (ctest)
+docs/               MCP, GUI architecture, API, models
 ```
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-Areas of interest:
-- Additional output formats
-- Performance optimizations
-- Language-specific improvements
-- GUI enhancements
-- Platform-specific features
-
-## Building Documentation
-
-Detailed platform-specific build instructions are available in [BUILDING.md](BUILDING.md).
-
-For API documentation (using Lisper as a library), see [docs/API.md](docs/API.md).
-
-Model selection guide: [docs/MODELS.md](docs/MODELS.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Build with `-DLISPER_BUILD_TESTS=ON` and run `ctest`.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Credits
-
-- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) - Core transcription engine
-- [OpenAI Whisper](https://github.com/openai/whisper) - Original model architecture
-- [Dear ImGui](https://github.com/ocornut/imgui) - GUI framework
-- [SDL2](https://www.libsdl.org/) - Cross-platform media layer
-
-## Contact & Support
-
-- **Issues**: [GitHub Issues](https://github.com/Lagmator22/Lisper/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Lagmator22/Lisper/discussions)
-
----
-
-<div align="center">
-Built with dedication to privacy and local-first computing.
-</div>
+MIT. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

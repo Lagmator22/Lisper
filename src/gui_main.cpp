@@ -1,5 +1,5 @@
 #include "gui_app.h"
 
-int main() {
-  return run_gui_app();
+int main(int argc, char **argv) {
+  return run_gui_app(argc, argv);
 }

@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Lisper
+GenericName=Voice Dictation
+Comment=Private, on-device dictation and transcription
+Exec=lisper_gui %f
+Icon=audio-input-microphone
+Terminal=false
+MimeType=audio/x-wav;audio/mpeg;audio/flac;audio/ogg;audio/mp4;video/mp4;video/x-matroska;video/webm;video/quicktime;
+Categories=Utility;Accessibility;AudioVideo;
+Keywords=dictation;speech;voice;transcribe;whisper;
+Actions=Toggle;
+
+[Desktop Action Toggle]
+Name=Start/stop dictation
+Exec=lisper_gui --toggle

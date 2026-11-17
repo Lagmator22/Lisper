@@ -14,34 +14,36 @@ This document describes how to use Lisper as a C++ library in your own applicati
 
 ## Installation
 
-### As a CMake Subdirectory
+### As a CMake Subdirectory (recommended)
 
 ```cmake
 # In your CMakeLists.txt
 add_subdirectory(third_party/lisper)
-target_link_libraries(your_app PRIVATE lisper)
+target_link_libraries(your_app PRIVATE lisper_core)
 ```
 
-### As a System Library
+`lisper_core` carries its include directory, so `#include "lisper.h"` works
+without extra setup.
+
+### Installing the CLI and headers
 
 ```bash
-# Install Lisper system-wide
 cd Lisper
 cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local
 cmake --build build -j
 sudo cmake --install build
-
-# In your CMakeLists.txt
-find_package(Lisper REQUIRED)
-target_link_libraries(your_app PRIVATE Lisper::lisper)
 ```
+
+This installs `lisper` (and `lisper_gui` when SDL2 is available) to `bin/` and
+the public headers to `include/lisper/`. A CMake package config for
+`find_package` is not provided yet; use `add_subdirectory` to link the library.
 
 ## Basic Usage
 
 ### Minimal Example
 
 ```cpp
-#include <lisper/lisper.h>
+#include "lisper.h"
 #include <iostream>
 
 int main() {
@@ -228,7 +230,7 @@ namespace formatter {
 ### Streaming Transcription
 
 ```cpp
-#include <lisper/lisper.h>
+#include "lisper.h"
 #include <lisper/stream.h>
 
 class TranscriptionCallback : public ITranscriptionCallback {
@@ -264,7 +266,7 @@ int main() {
 ### Batch Processing
 
 ```cpp
-#include <lisper/lisper.h>
+#include "lisper.h"
 #include <lisper/batch.h>
 #include <vector>
 #include <thread>
@@ -298,7 +300,7 @@ void batch_transcribe(const std::vector<std::string>& files) {
 ### Custom Audio Input
 
 ```cpp
-#include <lisper/lisper.h>
+#include "lisper.h"
 #include <vector>
 
 // Custom audio loader
@@ -333,7 +335,7 @@ int main() {
 ### Live Microphone Transcription
 
 ```cpp
-#include <lisper/lisper.h>
+#include "lisper.h"
 #include <lisper/live.h>
 
 int main() {
@@ -353,7 +355,7 @@ int main() {
 ### Directory Watching
 
 ```cpp
-#include <lisper/lisper.h>
+#include "lisper.h"
 #include <lisper/watcher.h>
 
 int main() {
@@ -382,7 +384,7 @@ int main() {
 ### Complete Application Example
 
 ```cpp
-#include <lisper/lisper.h>
+#include "lisper.h"
 #include <lisper/media.h>
 #include <lisper/formatter.h>
 #include <filesystem>
@@ -675,7 +677,7 @@ bool is_gpu_available() {
 
 ```cpp
 #include <QObject>
-#include <lisper/lisper.h>
+#include "lisper.h"
 
 class TranscriptionWorker : public QObject {
     Q_OBJECT
@@ -710,7 +712,7 @@ signals:
 ```cpp
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <lisper/lisper.h>
+#include "lisper.h"
 
 namespace py = pybind11;
 

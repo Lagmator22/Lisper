@@ -2,6 +2,7 @@
 #include "interrupt.h"
 #include "whisper.h"
 
+#include <algorithm>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -11,7 +12,9 @@ Lisper::Lisper(const LisperConfig &config) : config_(config) {
   whisper_log_set(
       [](ggml_log_level level, const char *text, void *user_data) {
         (void)user_data;
-        if (level == GGML_LOG_LEVEL_ERROR) {
+        // "failed to encode" is also logged when a decode is cancelled on
+        // purpose (live preview, user cancel); the caller reports real errors.
+        if (level == GGML_LOG_LEVEL_ERROR && std::strstr(text, "failed to encode") == nullptr) {
           std::cerr << "whisper.cpp error: " << text;
         }
       },
@@ -69,7 +72,8 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
   file.read(reinterpret_cast<char *>(&chunk_size), 4);
 
   // Validate chunk size
-  if (chunk_size + 8 > file_size) {
+  // Compare in 64-bit so a chunk_size near UINT32_MAX cannot wrap around.
+  if (static_cast<uint64_t>(chunk_size) + 8 > static_cast<uint64_t>(file_size)) {
     std::cerr << "Invalid chunk size in WAV header\n";
     return false;
   }
@@ -106,7 +110,7 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
       return false;
     }
     const size_t current_pos = static_cast<size_t>(current_pos_off);
-    if (current_pos + sub_size > file_size) {
+    if (static_cast<uint64_t>(current_pos) + sub_size > static_cast<uint64_t>(file_size)) {
       std::cerr << "Invalid sub-chunk size\n";
       return false;
     }
@@ -158,8 +162,10 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
         return false;
       }
 
-      size_t bytes_per_sample = bits_per_sample / 8;
-      size_t num_samples = sub_size / bytes_per_sample;
+      const size_t bytes_per_sample = static_cast<size_t>(bits_per_sample / 8);
+      // Ignore a trailing partial sample so the read below never over-runs `raw`.
+      const size_t num_samples = sub_size / bytes_per_sample;
+      const size_t data_bytes = num_samples * bytes_per_sample;
 
       // Sanity check for sample count
       constexpr size_t kMaxSamples = static_cast<size_t>(16000) * 60 * 60 * 12;
@@ -176,8 +182,8 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
         return false;
       }
 
-      file.read(reinterpret_cast<char *>(raw.data()), static_cast<std::streamsize>(sub_size));
-      if (file.gcount() != static_cast<std::streamsize>(sub_size)) {
+      file.read(reinterpret_cast<char *>(raw.data()), static_cast<std::streamsize>(data_bytes));
+      if (file.gcount() != static_cast<std::streamsize>(data_bytes)) {
         std::cerr << "Failed to read audio data\n";
         return false;
       }
@@ -219,7 +225,17 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
   return false;
 }
 
+void Lisper::set_initial_prompt(const std::string &prompt) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  config_.initial_prompt = prompt;
+}
+
 TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
+  return transcribe(audio_path, DecodeOptions{});
+}
+
+TranscriptionResult Lisper::transcribe(const std::string &audio_path,
+                                       const DecodeOptions &options) {
   TranscriptionResult result;
 
   if (!ctx_) {
@@ -235,32 +251,73 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
     return result;
   }
 
-  // whisper expects 16kHz mono. if the wav is at a different rate we should
-  // have already resampled via ffmpeg, but warn just in case.
   if (sample_rate != WHISPER_SAMPLE_RATE) {
-    std::cerr << "Warning: sample rate is " << sample_rate << "Hz, expected " << WHISPER_SAMPLE_RATE
-              << "Hz.\n"
-              << "Use FFmpeg to convert: ffmpeg -i input -ar 16000 -ac 1 "
-                 "output.wav\n";
+    result.error = "Expected 16 kHz audio but got " + std::to_string(sample_rate) +
+                   " Hz; prepare the file with media::prepare_audio first";
+    return result;
   }
+
+  return transcribe_pcm(pcm, options);
+}
+
+TranscriptionResult Lisper::transcribe_pcm(const std::vector<float> &pcm, bool single_segment,
+                                           const std::string &prompt) {
+  DecodeOptions options;
+  options.single_segment = single_segment;
+  options.prompt = prompt;
+  return transcribe_pcm(pcm, options);
+}
+
+TranscriptionResult Lisper::transcribe_pcm(const std::vector<float> &pcm,
+                                           const DecodeOptions &options) {
+  const bool single_segment = options.single_segment;
+  TranscriptionResult result;
+  if (!ctx_) {
+    result.error = "Model not loaded";
+    return result;
+  }
+  if (pcm.empty()) {
+    result.error = "No audio samples";
+    return result;
+  }
+
+  std::lock_guard<std::mutex> lock(mutex_);
 
   result.duration_ms = static_cast<int>((pcm.size() * 1000) / WHISPER_SAMPLE_RATE);
 
+  std::string language = options.language.empty() ? config_.language : options.language;
+  if (language.empty()) {
+    language = "auto";
+  }
+  if (language != "auto" && whisper_lang_id(language.c_str()) < 0) {
+    result.error = "Unsupported language code: " + language;
+    return result;
+  }
+  const std::string effective_prompt =
+      options.prompt.empty() ? config_.initial_prompt : options.prompt;
+
   whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
   params.print_realtime = false;
-  params.print_progress = config_.print_progress;
+  params.print_progress = false;
   params.print_timestamps = false;
   params.print_special = false;
-  params.translate = config_.translate;
-  params.language = config_.language.c_str();
+  params.translate = options.translate < 0 ? config_.translate : options.translate == 1;
+  params.language = language.c_str();
+  params.detect_language = false;
   params.n_threads = config_.threads;
-  params.token_timestamps = true;
-  params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
-  params.abort_callback_user_data = nullptr;
+  params.single_segment = single_segment;
+  params.token_timestamps = !single_segment;
+  params.initial_prompt = effective_prompt.empty() ? nullptr : effective_prompt.c_str();
+  params.abort_callback = [](void *user_data) {
+    const auto *flag = static_cast<const std::atomic<bool> *>(user_data);
+    return interrupt_state::is_interrupted() || (flag != nullptr && flag->load());
+  };
+  params.abort_callback_user_data = const_cast<std::atomic<bool> *>(options.cancel);
 
   int ret = whisper_full(ctx_, params, pcm.data(), static_cast<int>(pcm.size()));
   if (ret != 0) {
-    if (interrupt_state::is_interrupted()) {
+    if (interrupt_state::is_interrupted() ||
+        (options.cancel != nullptr && options.cancel->load())) {
       result.error = "Interrupted by user";
       return result;
     }
@@ -286,7 +343,10 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
   }
 
   result.full_text = full_text;
-  result.detected_language = config_.language;
+  // Report the language whisper actually used (resolves "auto").
+  const int lang_id = whisper_full_lang_id(ctx_);
+  const char *lang = lang_id >= 0 ? whisper_lang_str(lang_id) : nullptr;
+  result.detected_language = lang != nullptr ? lang : language;
   result.success = true;
 
   return result;

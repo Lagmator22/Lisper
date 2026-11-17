@@ -1,7 +1,6 @@
 #include "gui/background_transcriber.h"
 
 #include "formatter.h"
-#include "interrupt.h"
 #include "lisper.h"
 #include "media.h"
 
@@ -45,7 +44,7 @@ BackgroundTranscriber::~BackgroundTranscriber() {
 
 void BackgroundTranscriber::start(const JobRequest &request) {
   join_finished_worker();
-  interrupt_state::reset();
+  cancel_ = false;
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -65,7 +64,7 @@ void BackgroundTranscriber::cancel() {
     }
     status_ = "Cancelling";
   }
-  interrupt_state::request_stop();
+  cancel_ = true; // per-job flag: does not disturb dictation running alongside
 }
 
 bool BackgroundTranscriber::running() const {
@@ -146,24 +145,27 @@ void BackgroundTranscriber::run_job(const JobRequest &request) {
       return;
     }
 
-    set_status("Loading model");
-    LisperConfig config;
-    config.model_path = outcome.resolved_model_path;
-    config.language = request.language;
-    config.threads = request.threads;
-    config.translate = request.translate;
-    config.device = request.device;
-    config.gpu_device = request.gpu_device;
-    config.flash_attn = request.flash_attn;
-
-    Lisper engine(config);
-    if (!engine.is_loaded()) {
+    std::shared_ptr<Lisper> engine = request.shared_engine;
+    if (!engine || engine->config().model_path != outcome.resolved_model_path ||
+        engine->config().device != request.device) {
+      set_status("Loading model");
+      LisperConfig config;
+      config.model_path = outcome.resolved_model_path;
+      config.language = request.language;
+      config.threads = request.threads;
+      config.translate = request.translate;
+      config.device = request.device;
+      config.gpu_device = request.gpu_device;
+      config.flash_attn = request.flash_attn;
+      engine = std::make_shared<Lisper>(config);
+    }
+    if (!engine->is_loaded()) {
       outcome.status = "Failed to load the selected model.";
       finish(std::move(outcome));
       return;
     }
 
-    if (interrupt_state::is_interrupted()) {
+    if (cancel_) {
       outcome.cancelled = true;
       outcome.status = "Cancelled before transcription started.";
       finish(std::move(outcome));
@@ -181,9 +183,13 @@ void BackgroundTranscriber::run_job(const JobRequest &request) {
     TempFileGuard guard(prepared.wav_path, prepared.is_temp);
 
     set_status("Running transcription");
-    outcome.result = engine.transcribe(prepared.wav_path);
+    DecodeOptions options;
+    options.language = request.language;
+    options.translate = request.translate ? 1 : 0;
+    options.cancel = &cancel_;
+    outcome.result = engine->transcribe(prepared.wav_path, options);
     if (!outcome.result.success) {
-      if (interrupt_state::is_interrupted() || outcome.result.error == "Interrupted by user") {
+      if (cancel_ || outcome.result.error == "Interrupted by user") {
         outcome.cancelled = true;
         outcome.status = "Transcription cancelled.";
       } else {

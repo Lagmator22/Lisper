@@ -19,8 +19,14 @@ WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/lisper-stress.XXXXXX")"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
 mkdir -p "$WORK_DIR/in" "$WORK_DIR/out" "$WORK_DIR/logs"
-cp "$ROOT_DIR/jfk.wav" "$WORK_DIR/in/jfk.wav"
-cp "$ROOT_DIR/test.aiff" "$WORK_DIR/in/test.aiff"
+SAMPLE_WAV="${SAMPLE_WAV:-$ROOT_DIR/third_party/whisper.cpp/samples/jfk.wav}"
+if [[ ! -f "$SAMPLE_WAV" ]]; then
+  echo "Sample WAV not found: $SAMPLE_WAV (run: git submodule update --init)"
+  exit 1
+fi
+cp "$SAMPLE_WAV" "$WORK_DIR/in/jfk.wav"
+# Derive an AIFF sample from the WAV so the non-WAV ffmpeg path is exercised.
+ffmpeg -nostdin -loglevel error -y -i "$SAMPLE_WAV" "$WORK_DIR/in/test.aiff"
 
 case_index=0
 pass_count=0
@@ -62,7 +68,7 @@ run_watch_case() {
   local pid=$!
 
   sleep 1
-  cp "$ROOT_DIR/jfk.wav" "$watch_in/case_${case_index}.wav"
+  cp "$SAMPLE_WAV" "$watch_in/case_${case_index}.wav"
   sleep 1
   kill -INT "$pid" >/dev/null 2>&1
   wait "$pid"

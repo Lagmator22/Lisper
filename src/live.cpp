@@ -3,11 +3,9 @@
 #ifdef LISPER_ENABLE_LIVE
 
 #include "interrupt.h"
-#include "whisper.h"
 
 #include <SDL2/SDL.h>
 #include <chrono>
-#include <cstring>
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -32,6 +30,12 @@ static void audio_callback(void *userdata, Uint8 *stream, int len) {
 
   std::lock_guard<std::mutex> lock(state->mutex);
   state->audio_buffer.insert(state->audio_buffer.end(), float_stream, float_stream + num_samples);
+  // Bound memory if transcription falls behind real time: keep the newest 30s.
+  constexpr size_t kMaxBuffered = static_cast<size_t>(SAMPLE_RATE) * 30;
+  if (state->audio_buffer.size() > kMaxBuffered) {
+    state->audio_buffer.erase(state->audio_buffer.begin(),
+                              state->audio_buffer.end() - static_cast<long>(kMaxBuffered));
+  }
 }
 
 void start_live_transcription(Lisper &engine) {
@@ -94,40 +98,22 @@ void start_live_transcription(Lisper &engine) {
       state.audio_buffer.clear();
     }
 
-    // process_buffer is guaranteed non-empty after the copy above
-    whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-    params.print_realtime = false;
-    params.print_progress = false;
-    params.print_timestamps = false;
-    params.print_special = false;
-    params.single_segment = true;
-    params.translate = engine.translate();
-    params.n_threads = engine.threads();
-    params.language = engine.language().c_str();
-    params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
-    params.abort_callback_user_data = nullptr;
-
-    // Re-use engine's whisper context
-    int ret = whisper_full(engine.get_ctx(), params, process_buffer.data(),
-                           static_cast<int>(process_buffer.size()));
-    if (ret != 0 && interrupt_state::is_interrupted()) {
-      break;
+    const TranscriptionResult result = engine.transcribe_pcm(process_buffer, true);
+    if (!result.success) {
+      if (interrupt_state::is_interrupted()) {
+        break;
+      }
+      continue;
     }
-    if (ret == 0) {
-      int n_segments = whisper_full_n_segments(engine.get_ctx());
-      for (int i = 0; i < n_segments; ++i) {
-        const char *text = whisper_full_get_segment_text(engine.get_ctx(), i);
-        if (text && strlen(text) > 0) {
-          std::string clean_text = text;
-          // trim leading whitespace
-          size_t first = clean_text.find_first_not_of(" \t\r\n");
-          if (first != std::string::npos) {
-            clean_text.erase(0, first);
-          }
-          if (!clean_text.empty() && clean_text != "[BLANK_AUDIO]") {
-            std::cout << clean_text << " " << std::flush;
-          }
-        }
+    for (const auto &segment : result.segments) {
+      std::string clean_text = segment.text;
+      const size_t first = clean_text.find_first_not_of(" \t\r\n");
+      if (first == std::string::npos) {
+        continue;
+      }
+      clean_text.erase(0, first);
+      if (clean_text != "[BLANK_AUDIO]") {
+        std::cout << clean_text << " " << std::flush;
       }
     }
   }

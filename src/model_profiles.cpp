@@ -1,5 +1,7 @@
 #include "model_profiles.h"
 
+#include "paths.h"
+
 #include <algorithm>
 #include <filesystem>
 
@@ -7,6 +9,7 @@ namespace fs = std::filesystem;
 
 const std::vector<ModelProfile> &all_model_profiles() {
   static const std::vector<ModelProfile> kProfiles = {
+      {"tiny", "ggml-tiny.bin", "Smallest model for instant dictation and quick tests."},
       {"fast", "ggml-small-q5_1.bin", "Small multilingual model for fast drafts on CPU-only runs."},
       {"balanced", "ggml-medium-q5_0.bin", "Medium multilingual model for day-to-day transcripts."},
       {"quality", "ggml-large-v3-turbo-q5_0.bin",
@@ -37,7 +40,11 @@ std::string resolve_model_path(const std::string &explicit_model_path,
     return "";
   }
 
+  // The per-user models directory is checked first so behaviour does not
+  // depend on the current working directory; the relative paths remain for
+  // source-tree development.
   const std::vector<fs::path> candidates = {
+      fs::path(paths::models_dir()) / profile->filename,
       fs::path("models") / profile->filename,
       fs::path("third_party/whisper.cpp/models") / profile->filename,
       fs::path(profile->filename),

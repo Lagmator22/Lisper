@@ -27,11 +27,11 @@ jobs:
         compiler: [gcc, clang]
         include:
           - compiler: gcc
-            cc: gcc-11
-            cxx: g++-11
+            cc: gcc
+            cxx: g++
           - compiler: clang
-            cc: clang-14
-            cxx: clang++-14
+            cc: clang
+            cxx: clang++
 
     steps:
     - name: Checkout repository
@@ -43,20 +43,13 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          gcc-11 \
-          g++-11 \
-          clang-14 \
+          gcc \
+          g++ \
+          clang \
           cmake \
           ffmpeg \
           libsdl2-dev \
-          libsdl2-ttf-dev \
-          libavcodec-dev \
-          libavformat-dev \
-          libavutil-dev \
-          libswresample-dev \
-          gcc-11 \
-          g++-11 \
-          clang-14
+          libx11-dev
 
     - name: Configure CMake
       env:
@@ -82,6 +75,18 @@ jobs:
         # Run basic smoke test
         ./lisper --help
         ./lisper --list-model-profiles
+        ctest --output-on-failure
+        # End-to-end transcription with the tiny model
+        ./lisper --no-animate -m models/ggml-tiny.bin ../third_party/whisper.cpp/samples/jfk.wav
+        # MCP server: handshake, tool listing and a real transcription
+        printf '%s\n' \
+          '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
+          '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+          '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"transcribe_file","arguments":{"path":"'"$GITHUB_WORKSPACE"'/third_party/whisper.cpp/samples/jfk.wav"}}}' \
+          | ./lisper-mcp -m models/ggml-tiny.bin --allow-dir "$GITHUB_WORKSPACE" | tee mcp.out
+        grep -q '"protocolVersion":"2025-06-18"' mcp.out
+        grep -q 'transcribe_file' mcp.out
+        grep -qi 'fellow americans' mcp.out
 
   build-macos:
     runs-on: macos-latest
@@ -94,14 +99,15 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install cmake ffmpeg sdl2 sdl2_ttf
+        brew install cmake ffmpeg sdl2
 
     - name: Configure CMake
       run: |
         cmake -B ${{github.workspace}}/build \
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
           -DLISPER_ENABLE_LIVE=ON \
-          -DWHISPER_METAL=ON
+          -DLISPER_BUILD_TESTS=ON \
+          -DGGML_METAL=ON
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j$(sysctl -n hw.ncpu)
@@ -111,6 +117,7 @@ jobs:
       run: |
         ./lisper --help
         ./lisper --list-model-profiles
+        ctest --output-on-failure
 
   build-windows:
     runs-on: windows-latest
@@ -147,9 +154,10 @@ jobs:
       shell: cmd
       run: |
         copy C:\vcpkg\installed\x64-windows\bin\*.dll Release\
-        copy bin\Release\*.dll Release\
+        if exist bin\Release\*.dll copy bin\Release\*.dll Release\
         Release\lisper.exe --help
         Release\lisper.exe --list-model-profiles
+        Release\lisper-mcp.exe --help
 
   code-quality:
     runs-on: ubuntu-latest
@@ -163,12 +171,15 @@ jobs:
     - name: Install tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang-format-14 cppcheck
+        sudo apt-get install -y cppcheck
+        # Pin the formatter version the code is formatted with.
+        pipx install clang-format==14.0.6
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
     - name: Check formatting
       run: |
         # Check if code is properly formatted
-        find src -name "*.cpp" -o -name "*.h" | xargs clang-format-14 --dry-run --Werror 2>&1 | tee format-check.log
+        find src -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run --Werror 2>&1 | tee format-check.log
         if [ -s format-check.log ]; then
           echo "Code formatting issues detected. Run clang-format to fix."
           exit 1

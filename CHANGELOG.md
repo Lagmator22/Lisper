@@ -1,5 +1,75 @@
 # Changelog
 
+## [0.4.0] - 2026-11-17
+
+### Dictation
+- Notch island: the dictation indicator grows out of the MacBook notch (above the menu bar,
+  on every Space and over full-screen apps) with spring animation and hides back into it when
+  idle; it hangs from the top or floats at the bottom on other screens.
+- Real-time words: a live preview transcribes the microphone buffer while you speak and shows
+  the text in the island and on Home.
+- Tap ⌘⌥ (macOS default) to start and stop; any modifier-only chord works, and chords used as
+  part of another shortcut or a drag are ignored. Hold-to-talk works with chords too.
+- Focus goes back to the app you were dictating into before pasting, even after clicking the
+  island; a failed paste is reported as "Copied" rather than an error.
+
+### Design
+- New visual language: warm paper palette with a clay accent, Source Serif 4 headings and
+  Inter text bundled into the binary, refined outline icons, soft card shadows.
+- Motion throughout: page transitions, spring navigation indicator and toggles, sliding
+  segmented controls, eased hover/press states, count-up stats, history rows sliding in,
+  toast slide-up, and a dictation orb that breathes, ripples with the live microphone level
+  and resolves into a check.
+
+### Engineering
+- Island renders through its own ImGui context in a fixed canvas window with an animated
+  shape (works around SDL2 shaped windows not supporting resize).
+- whisper.cpp and ggml are linked statically.
+- Final dictation pass is faster while the preview runs (one core left free for the UI).
+
+## [0.3.0] - 2026-11-17
+
+### Dictation app (Wispr Flow style)
+- System-wide dictation shortcut (default Ctrl+Shift+Space), toggle or hold-to-talk,
+  on Windows, macOS and X11; `lisper_gui --toggle` for Wayland and scripts.
+- Floating bar with live waveform, transcribing and done/error states.
+- Text is cleaned up and pasted into the focused app, with clipboard restore,
+  or copied only.
+- Filler-word removal, "new line"/"new paragraph" voice commands, formal/casual style.
+- Personal dictionary (replacements + vocabulary prompt) and snippets.
+- Local history with search, copy and delete; stats for words, WPM, streak and time saved.
+- Redesigned app: Home, Transcribe files, Dictionary, Snippets, Style, Settings;
+  light and dark themes; start/stop chimes; in-app model downloads.
+- Single instance; closing keeps Lisper running in the background (configurable).
+- macOS app bundle with microphone usage description; Linux desktop entry.
+
+### MCP server
+- New `lisper-mcp` (stdio, MCP 2025-06-18/2025-03-26/2024-11-05) with
+  `transcribe_file`, `transcribe_audio`, `clean_text`, `list_models`, and opt-in
+  `record_and_transcribe`, `get_dictation_history`, `download_model`.
+- Directory allow-list, request cancellation, size limits. See docs/MCP.md.
+
+### Security
+- All external programs run without a shell (`posix_spawnp` / `CreateProcessW`).
+- ffmpeg restricted to local files (`file:` URLs + protocol whitelist).
+- Exclusive, owner-only temporary files with unpredictable names.
+- Fixed 32-bit overflow in WAV chunk validation; JSON output escapes all control characters.
+- Model download is opt-in (`--download-model`), HTTPS-only, validated and atomic,
+  replacing execution of a shell script from the working directory.
+- Settings and history stored with owner-only permissions.
+
+### Engine and CLI
+- `--language auto` reports the detected language.
+- WAVs that are not 16 kHz 16-bit PCM are resampled instead of transcribed at the wrong rate.
+- Thread-safe engine with per-call language/translate overrides and cancellation.
+- Watch mode waits for files to finish copying.
+- Per-user models directory (`LISPER_MODELS_DIR`, `LISPER_HOME`); new `tiny` profile.
+
+### Build
+- `LISPER_ENABLE_LIVE`, `LISPER_BUILD_TESTS` options; install rules; unit tests in CI;
+  end-to-end CLI and MCP checks in CI.
+- Removed dead code: unused watcher APIs, legacy GUI state, unused theme helpers.
+
 ## [0.2.0] - 2024-03-06
 
 ### Security Fixes
