@@ -33,7 +33,7 @@ struct AppState {
   std::array<char, kPathBuffer> manual_model_path{};
   std::array<char, kTextBuffer> language{};
 
-  int profile_index = 2;
+  int profile_index = 3; // "quality"
   int format_index = 0;
   int device_index = 0;
   int threads = 4;

@@ -52,9 +52,7 @@ public:
   bool translate() const { return config_.translate; }
   const std::string &language() const { return config_.language; }
 
-  struct whisper_context *get_ctx() const {
-    return ctx_;
-  }
+  struct whisper_context *get_ctx() const { return ctx_; }
 
 private:
   struct whisper_context *ctx_ = nullptr;

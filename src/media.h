@@ -50,6 +50,27 @@ inline bool is_media_file(const std::string &path) {
   return is_audio_file(path) || is_video_file(path);
 }
 
+struct WavInfo {
+  int audio_format = 0;
+  int channels = 0;
+  int sample_rate = 0;
+  int bits_per_sample = 0;
+};
+
+// Read only the RIFF/fmt header of a WAV file.
+bool probe_wav(const std::string &path, WavInfo &info);
+
+// True when the WAV can be fed to whisper without resampling.
+bool wav_is_whisper_ready(const WavInfo &info);
+
+// Create an empty, uniquely named file with owner-only permissions. Returns the
+// path, or an empty string on failure.
+std::string create_secure_temp_file(const std::string &tmp_dir = "",
+                                    const std::string &suffix = ".tmp");
+
+// Build the ffmpeg `-i` argument for a local path (forces the file: protocol).
+std::string ffmpeg_input_arg(const std::string &input_path);
+
 // extract audio from a media file to a 16kHz mono WAV using ffmpeg.
 // returns the path to the temporary wav file, or empty string on failure.
 std::string extract_audio(const std::string &input_path, const std::string &tmp_dir = "");

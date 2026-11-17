@@ -34,6 +34,9 @@ set(LISPER_CORE_SOURCES
     src/media.cpp
     src/formatter.cpp
     src/watcher.cpp
+    src/process.cpp
+    src/paths.cpp
+    src/model_download.cpp
 )
 
 if(SDL2_FOUND)

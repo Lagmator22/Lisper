@@ -32,6 +32,12 @@ static void audio_callback(void *userdata, Uint8 *stream, int len) {
 
   std::lock_guard<std::mutex> lock(state->mutex);
   state->audio_buffer.insert(state->audio_buffer.end(), float_stream, float_stream + num_samples);
+  // Bound memory if transcription falls behind real time: keep the newest 30s.
+  constexpr size_t kMaxBuffered = static_cast<size_t>(SAMPLE_RATE) * 30;
+  if (state->audio_buffer.size() > kMaxBuffered) {
+    state->audio_buffer.erase(state->audio_buffer.begin(),
+                              state->audio_buffer.end() - static_cast<long>(kMaxBuffered));
+  }
 }
 
 void start_live_transcription(Lisper &engine) {

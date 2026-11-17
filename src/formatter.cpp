@@ -56,8 +56,22 @@ static std::string escape_json(const std::string &s) {
     case '\t':
       out += "\\t";
       break;
+    case '\b':
+      out += "\\b";
+      break;
+    case '\f':
+      out += "\\f";
+      break;
     default:
-      out += c;
+      if (static_cast<unsigned char>(c) < 0x20) {
+        // Remaining control characters must be \u-escaped to keep JSON valid.
+        static const char *kHex = "0123456789abcdef";
+        out += "\\u00";
+        out += kHex[(static_cast<unsigned char>(c) >> 4) & 0xF];
+        out += kHex[static_cast<unsigned char>(c) & 0xF];
+      } else {
+        out += c;
+      }
     }
   }
   return out;
@@ -82,18 +96,15 @@ static std::string format_json(const TranscriptionResult &result, const std::str
   std::ostringstream ss;
   ss << "{\n"
      << "  \"source\": \"" << escape_json(source) << "\",\n"
-     << "  \"language\": \"" << result.detected_language << "\",\n"
+     << "  \"language\": \"" << escape_json(result.detected_language) << "\",\n"
      << "  \"duration_ms\": " << result.duration_ms << ",\n"
      << "  \"text\": \"" << escape_json(result.full_text) << "\",\n"
      << "  \"segments\": [\n";
 
   for (size_t i = 0; i < result.segments.size(); i++) {
     const auto &seg = result.segments[i];
-    ss << "    {"
-       << "\"start\": " << seg.start_ms << ", "
-       << "\"end\": " << seg.end_ms << ", "
-       << "\"text\": \"" << escape_json(seg.text) << "\""
-       << "}";
+    ss << "    {" << "\"start\": " << seg.start_ms << ", " << "\"end\": " << seg.end_ms << ", "
+       << "\"text\": \"" << escape_json(seg.text) << "\"" << "}";
     if (i + 1 < result.segments.size())
       ss << ",";
     ss << "\n";

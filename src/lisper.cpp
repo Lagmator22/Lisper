@@ -69,7 +69,8 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
   file.read(reinterpret_cast<char *>(&chunk_size), 4);
 
   // Validate chunk size
-  if (chunk_size + 8 > file_size) {
+  // Compare in 64-bit so a chunk_size near UINT32_MAX cannot wrap around.
+  if (static_cast<uint64_t>(chunk_size) + 8 > static_cast<uint64_t>(file_size)) {
     std::cerr << "Invalid chunk size in WAV header\n";
     return false;
   }
@@ -106,7 +107,7 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
       return false;
     }
     const size_t current_pos = static_cast<size_t>(current_pos_off);
-    if (current_pos + sub_size > file_size) {
+    if (static_cast<uint64_t>(current_pos) + sub_size > static_cast<uint64_t>(file_size)) {
       std::cerr << "Invalid sub-chunk size\n";
       return false;
     }
@@ -158,8 +159,10 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
         return false;
       }
 
-      size_t bytes_per_sample = bits_per_sample / 8;
-      size_t num_samples = sub_size / bytes_per_sample;
+      const size_t bytes_per_sample = static_cast<size_t>(bits_per_sample / 8);
+      // Ignore a trailing partial sample so the read below never over-runs `raw`.
+      const size_t num_samples = sub_size / bytes_per_sample;
+      const size_t data_bytes = num_samples * bytes_per_sample;
 
       // Sanity check for sample count
       constexpr size_t kMaxSamples = static_cast<size_t>(16000) * 60 * 60 * 12;
@@ -176,8 +179,8 @@ bool Lisper::load_wav(const std::string &path, std::vector<float> &pcm, int &sam
         return false;
       }
 
-      file.read(reinterpret_cast<char *>(raw.data()), static_cast<std::streamsize>(sub_size));
-      if (file.gcount() != static_cast<std::streamsize>(sub_size)) {
+      file.read(reinterpret_cast<char *>(raw.data()), static_cast<std::streamsize>(data_bytes));
+      if (file.gcount() != static_cast<std::streamsize>(data_bytes)) {
         std::cerr << "Failed to read audio data\n";
         return false;
       }
