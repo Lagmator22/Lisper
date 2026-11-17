@@ -20,6 +20,11 @@ constexpr float kPi = 3.14159265f;
 constexpr float kHeaderH = 40.0f;
 constexpr float kTextLineH = 18.0f;
 constexpr float kFloatMargin = 12.0f;
+// The island lives inside a fixed-size, mostly invisible canvas window. Only
+// the island's shape is visible/clickable; the window itself never resizes
+// (SDL2 shaped windows cannot be resized safely).
+constexpr int kCanvasW = 560;
+constexpr int kCanvasH = 200;
 
 float ease_out_cubic(float t) {
   t = std::clamp(t, 0.0f, 1.0f);
@@ -124,19 +129,29 @@ bool Overlay::ensure_window() {
   const Uint32 flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP |
                        SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_UTILITY | SDL_WINDOW_ALLOW_HIGHDPI;
 #ifdef __APPLE__
-  window_ = SDL_CreateWindow("Lisper", 0, 0, 320, 80, flags);
+  window_ = SDL_CreateWindow("Lisper", 0, 0, kCanvasW, kCanvasH, flags);
 #else
   // Shaped windows give real rounded corners without a compositor.
-  window_ = SDL_CreateShapedWindow("Lisper", 0, 0, 320, 80, flags);
+  window_ = SDL_CreateShapedWindow("Lisper", 0, 0, kCanvasW, kCanvasH, flags);
   shaped_ = window_ != nullptr;
   if (window_ == nullptr) {
-    window_ = SDL_CreateWindow("Lisper", 0, 0, 320, 80, flags);
+    window_ = SDL_CreateWindow("Lisper", 0, 0, kCanvasW, kCanvasH, flags);
   }
 #endif
   if (window_ == nullptr) {
     return false;
   }
-  renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+#if !defined(_WIN32) && !defined(__APPLE__)
+  // On X11 the OpenGL renderer recreates the window, which discards its shape.
+  // The island is small, so the software renderer is plenty.
+  if (shaped_) {
+    renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_SOFTWARE);
+  }
+#endif
+  if (renderer_ == nullptr) {
+    renderer_ =
+        SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  }
   if (renderer_ == nullptr) {
     renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_SOFTWARE);
   }
@@ -173,26 +188,34 @@ bool Overlay::ensure_window() {
   return true;
 }
 
-void Overlay::apply_shape(int w, int h, float radius) {
-  if (!shaped_ || (w == shape_w_ && h == shape_h_)) {
+void Overlay::apply_shape(int ix, int iy, int iw, int ih, float radius) {
+  if (!shaped_) {
     return;
   }
-  SDL_Surface *mask = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
+  const int key = ((ix * 31 + iy) * 31 + iw) * 31 + ih;
+  if (key == shape_key_) {
+    return;
+  }
+  SDL_Surface *mask =
+      SDL_CreateRGBSurfaceWithFormat(0, kCanvasW, kCanvasH, 32, SDL_PIXELFORMAT_RGBA32);
   if (mask == nullptr) {
     return;
   }
   SDL_FillRect(mask, nullptr, SDL_MapRGBA(mask->format, 0, 0, 0, 0));
   const Uint32 on = SDL_MapRGBA(mask->format, 255, 255, 255, 255);
-  const float r = std::min(radius, std::min(w, h) * 0.5f);
-  for (int y = 0; y < h; ++y) {
+  const float r = std::min(radius, std::min(iw, ih) * 0.5f);
+  const float x0 = static_cast<float>(ix);
+  const float y0 = static_cast<float>(iy);
+  const float x1 = x0 + static_cast<float>(iw);
+  const float y1 = y0 + static_cast<float>(ih);
+  for (int y = std::max(0, iy); y < std::min(kCanvasH, iy + ih); ++y) {
     auto *row = static_cast<Uint32 *>(mask->pixels) + y * (mask->pitch / 4);
-    for (int x = 0; x < w; ++x) {
+    for (int x = std::max(0, ix); x < std::min(kCanvasW, ix + iw); ++x) {
       const float px = static_cast<float>(x) + 0.5f;
       const float py = static_cast<float>(y) + 0.5f;
-      const float cx = std::clamp(px, r, static_cast<float>(w) - r);
+      const float cx = std::clamp(px, x0 + r, x1 - r);
       // Flush top edge when attached to the top of the screen.
-      const float cy = attached_top_ ? std::min(py, static_cast<float>(h) - r)
-                                     : std::clamp(py, r, static_cast<float>(h) - r);
+      const float cy = attached_top_ ? std::min(py, y1 - r) : std::clamp(py, y0 + r, y1 - r);
       const float dx = px - cx;
       const float dy = py - cy;
       if (dx * dx + dy * dy <= r * r) {
@@ -203,9 +226,11 @@ void Overlay::apply_shape(int w, int h, float radius) {
   SDL_WindowShapeMode mode;
   mode.mode = ShapeModeBinarizeAlpha;
   mode.parameters.binarizationCutoff = 128;
-  if (SDL_SetWindowShape(window_, mask, &mode) == 0) {
-    shape_w_ = w;
-    shape_h_ = h;
+  const int rc = SDL_SetWindowShape(window_, mask, &mode);
+  if (rc == 0) {
+    shape_key_ = key;
+  } else if (SDL_getenv("LISPER_DEBUG_ISLAND") != nullptr) {
+    SDL_Log("island shape failed (%d)", rc);
   }
   SDL_FreeSurface(mask);
 }
@@ -242,7 +267,12 @@ bool Overlay::handle_event(const SDL_Event &event, bool &clicked) {
     return false;
   }
   if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
-    clicked = true;
+    // Only the island itself is clickable; the rest of the canvas is
+    // transparent (and on most platforms not even part of the window).
+    const int mx = event.button.x;
+    const int my = event.button.y;
+    clicked = mx >= island_x_ && mx < island_x_ + island_w_ && my >= island_y_ &&
+              my < island_y_ + island_h_;
   }
   return true;
 }
@@ -277,7 +307,7 @@ void Overlay::update(const Dictation &dictation, const Settings &settings) {
 #ifdef __APPLE__
     attached_top_ = settings.island_top;
 #else
-    attached_top_ = false;
+    attached_top_ = settings.island_top && screen_.has_notch;
 #endif
     header_y_ = attached_top_ ? std::max(screen_.top_inset, screen_.notch_h) : 0;
     const float collapsed_w =
@@ -338,18 +368,28 @@ void Overlay::update(const Dictation &dictation, const Settings &settings) {
     return;
   }
 
-  // ---- place the window ------------------------------------------------------
-  const int w = std::max(40, static_cast<int>(std::lround(width_.value)));
-  const int h = std::max(20, static_cast<int>(std::lround(height_.value)));
-  const int x = screen_.x + (screen_.w - w) / 2;
-  int y = screen_.y;
+  // ---- place the canvas and the island inside it ------------------------------
+  const bool grow_up = !attached_top_ && !settings.island_top; // bottom placement
+  island_w_ = std::clamp(static_cast<int>(std::lround(width_.value)), 40, kCanvasW - 8);
+  island_h_ = std::clamp(static_cast<int>(std::lround(height_.value)), 20, kCanvasH - 8);
+  island_x_ = (kCanvasW - island_w_) / 2;
+  island_y_ = grow_up ? kCanvasH - island_h_ : 0;
+  const int cx = screen_.x + (screen_.w - kCanvasW) / 2;
+  int cy = screen_.y;
   if (!attached_top_) {
-    y = settings.island_top ? screen_.y + screen_.top_inset + static_cast<int>(kFloatMargin)
-                            : screen_.y + screen_.h - h - 72;
+    cy = settings.island_top ? screen_.y + screen_.top_inset + static_cast<int>(kFloatMargin)
+                             : screen_.y + screen_.h - kCanvasH - 60;
   }
-  const float radius = attached_top_ ? std::min(22.0f, h * 0.45f) : h * 0.5f;
-  platform::place_island(window_, x, y, w, h, radius, !attached_top_);
-  apply_shape(w, h, radius);
+  const float radius = attached_top_ ? std::min(22.0f, island_h_ * 0.45f) : island_h_ * 0.5f;
+  if (shaped_ || transparent_) {
+    platform::place_window(window_, cx, cy, kCanvasW, kCanvasH);
+    apply_shape(island_x_, island_y_, island_w_, island_h_, radius);
+  } else {
+    // No way to hide the canvas: fit a plain (non-shaped) window to the island.
+    platform::place_window(window_, cx + island_x_, cy + island_y_, island_w_, island_h_);
+    island_x_ = 0;
+    island_y_ = 0;
+  }
 
   render(dictation, dt);
 }
@@ -369,8 +409,10 @@ void Overlay::render(const Dictation &dictation, float dt) {
   ImGui::NewFrame();
   ImDrawList *dl = ImGui::GetForegroundDrawList();
 
-  const float W = io.DisplaySize.x;
-  const float H = io.DisplaySize.y;
+  // The island is drawn at the origin and translated into place afterwards.
+  const int vtx_start = dl->VtxBuffer.Size;
+  const float W = static_cast<float>(island_w_);
+  const float H = static_cast<float>(island_h_);
   const float a = content_alpha_;
   const Dictation::Phase phase = last_phase_;
 
@@ -518,6 +560,12 @@ void Overlay::render(const Dictation &dictation, float dt) {
                   body.c_str(), nullptr, width);
       ImGui::PopFont();
     }
+  }
+
+  const ImVec2 offset(static_cast<float>(island_x_), static_cast<float>(island_y_));
+  for (int i = vtx_start; i < dl->VtxBuffer.Size; ++i) {
+    dl->VtxBuffer[i].pos.x += offset.x;
+    dl->VtxBuffer[i].pos.y += offset.y;
   }
 
   ImGui::Render();

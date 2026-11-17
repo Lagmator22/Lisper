@@ -31,10 +31,6 @@ struct DecodeOptions {
   // Optional per-call cancellation flag, checked alongside the global
   // interrupt_state so independent jobs can be cancelled separately.
   const std::atomic<bool> *cancel = nullptr;
-  // Encoder context in frames (50 per second of audio). 0 = full 30 s window.
-  // Smaller values are much faster for short clips at a small accuracy cost,
-  // which suits live previews.
-  int audio_ctx = 0;
 };
 
 struct LisperConfig {

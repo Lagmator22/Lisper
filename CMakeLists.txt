@@ -31,7 +31,9 @@ if(LISPER_ENABLE_LIVE OR LISPER_BUILD_GUI)
     endif()
 endif()
 
-# whisper.cpp build options
+# whisper.cpp build options: link statically so lisper, lisper_gui and
+# lisper-mcp are self-contained executables (no DLL/dylib to ship).
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_SERVER OFF CACHE BOOL "" FORCE)

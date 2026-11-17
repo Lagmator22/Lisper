@@ -119,16 +119,22 @@ bool draw_button(const char *label, const ImVec2 &size_arg, const ImVec4 &bg,
   const float shrink = press * 1.5f;
   const ImVec2 a(pos.x + shrink, pos.y + shrink);
   const ImVec2 b(pos.x + size.x - shrink, pos.y + size.y - shrink);
-  const float alpha = disabled ? style.DisabledAlpha : 1.0f;
   ImDrawList *dl = ImGui::GetWindowDrawList();
-  dl->AddRectFilled(a, b, u32(with_alpha(mix(bg, bg_hover, hover), bg.w * alpha)), 10.0f);
-  if (border.w > 0.0f) {
-    dl->AddRect(a, b, u32(with_alpha(mix(border, g_palette.border_strong, hover), alpha)), 10.0f, 0,
-                1.0f);
-  }
   const char *end = ImGui::FindRenderedTextEnd(label);
-  dl->AddText(ImVec2(pos.x + (size.x - text.x) * 0.5f, pos.y + (size.y - text.y) * 0.5f),
-              u32(with_alpha(fg, alpha)), label, end);
+  const ImVec2 text_pos(pos.x + (size.x - text.x) * 0.5f, pos.y + (size.y - text.y) * 0.5f);
+  if (disabled) {
+    // Neutral and legible rather than a faded version of the colour.
+    dl->AddRectFilled(a, b, u32(g_palette.input), 10.0f);
+    dl->AddRect(a, b, u32(g_palette.border), 10.0f, 0, 1.0f);
+    dl->AddText(text_pos, u32(g_palette.text_faint), label, end);
+    (void)style;
+    return false;
+  }
+  dl->AddRectFilled(a, b, u32(mix(bg, bg_hover, hover)), 10.0f);
+  if (border.w > 0.0f) {
+    dl->AddRect(a, b, u32(mix(border, g_palette.border_strong, hover)), 10.0f, 0, 1.0f);
+  }
+  dl->AddText(text_pos, u32(fg), label, end);
   return pressed && !disabled;
 }
 
@@ -538,11 +544,15 @@ void setting_row_end() {
 }
 
 void divider() {
-  const ImVec2 pos = ImGui::GetCursorScreenPos();
-  const float w = ImGui::GetContentRegionAvail().x;
-  ImGui::GetWindowDrawList()->AddLine(ImVec2(pos.x, pos.y + 6.0f), ImVec2(pos.x + w, pos.y + 6.0f),
-                                      u32(g_palette.border), 1.0f);
-  ImGui::Dummy(ImVec2(w, 13.0f));
+  // Span the full content width regardless of where the previous line left
+  // the cursor (SameLine offsets), and snap to whole pixels.
+  ImGuiWindow *window = ImGui::GetCurrentWindow();
+  const float x0 = window->WorkRect.Min.x;
+  const float x1 = window->WorkRect.Max.x;
+  const float y = std::floor(ImGui::GetCursorScreenPos().y + 6.0f);
+  window->DrawList->AddRectFilled(ImVec2(x0, y), ImVec2(x1, y + 1.0f), u32(g_palette.border));
+  ImGui::SetCursorScreenPos(ImVec2(x0, ImGui::GetCursorScreenPos().y));
+  ImGui::Dummy(ImVec2(x1 - x0, 13.0f));
 }
 
 bool setting_row_toggle(const char *title, const char *description, bool *value) {

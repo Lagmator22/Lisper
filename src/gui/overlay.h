@@ -43,7 +43,7 @@ public:
 
 private:
   bool ensure_window();
-  void apply_shape(int w, int h, float radius);
+  void apply_shape(int x, int y, int w, int h, float radius);
   void render(const Dictation &dictation, float dt);
 
   SDL_Window *window_ = nullptr;
@@ -65,8 +65,12 @@ private:
   Spring width_;
   Spring height_;
   float content_alpha_ = 0.0f;
-  int shape_w_ = 0;
-  int shape_h_ = 0;
+  // Island rectangle inside the fixed-size canvas window (points).
+  int island_x_ = 0;
+  int island_y_ = 0;
+  int island_w_ = 0;
+  int island_h_ = 0;
+  int shape_key_ = 0; // last applied shape, to skip redundant updates
 
   Dictation::Phase last_phase_ = Dictation::Phase::Idle;
   float phase_time_ = 0.0f;

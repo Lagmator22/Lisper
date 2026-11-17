@@ -3,6 +3,7 @@
 #include "model_profiles.h"
 #include "text_cleanup.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <filesystem>
 
@@ -60,7 +61,9 @@ void Dictation::start_live_preview() {
   live_stop_ = false;
   live_thread_ = std::thread([this] {
     constexpr size_t kWindow = 16000 * 24; // decode at most the last 24 s
-    constexpr size_t kMinAudio = 16000 * 8 / 10;
+    // Whisper invents text for very short or silent clips, so wait for a
+    // second and a half of audio that actually contains sound.
+    constexpr size_t kMinAudio = 16000 * 3 / 2;
     size_t last_size = 0;
     while (!live_stop_) {
       for (int i = 0; i < 6 && !live_stop_; ++i) {
@@ -81,12 +84,15 @@ void Dictation::start_live_preview() {
       if (!engine || pcm.size() < kMinAudio || static_cast<size_t>(total) == last_size) {
         continue;
       }
+      const auto recent = capture_.recent_levels(48); // ~1.5 s of level history
+      const float loudest = *std::max_element(recent.begin(), recent.end());
+      if (loudest < 0.08f) {
+        continue; // silence: keep the last preview instead of hallucinating
+      }
       last_size = static_cast<size_t>(total);
 
       DecodeOptions options;
       options.cancel = &live_stop_;
-      // Encode only the audio we have (+1.5 s headroom) instead of 30 s.
-      options.audio_ctx = static_cast<int>(pcm.size() / 320) + 75;
       const TranscriptionResult r = engine->transcribe_pcm(pcm, options);
       if (live_stop_ || !r.success) {
         continue;

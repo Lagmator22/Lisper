@@ -95,7 +95,6 @@ bool configure_island_window(SDL_Window *window) {
     view.wantsLayer = YES;
     view.layer.backgroundColor = [NSColor clearColor].CGColor;
     view.layer.opaque = NO;
-    view.layer.masksToBounds = YES;
     for (NSView *sub in view.subviews) {
       sub.wantsLayer = YES;
       sub.layer.opaque = NO; // CAMetalLayer / GL layer: keep alpha
@@ -104,8 +103,7 @@ bool configure_island_window(SDL_Window *window) {
   }
 }
 
-void place_island(SDL_Window *window, int x, int y, int w, int h, float radius,
-                  bool round_all_corners) {
+void place_window(SDL_Window *window, int x, int y, int w, int h) {
   @autoreleasepool {
     NSWindow *win = ns_window(window);
     if (win == nil) {
@@ -113,20 +111,10 @@ void place_island(SDL_Window *window, int x, int y, int w, int h, float radius,
       SDL_SetWindowPosition(window, x, y);
       return;
     }
-    // setFrame: is not constrained to below the menu bar for this level.
+    // setFrame: is not constrained to below the menu bar at this level.
     const NSRect frame = NSMakeRect(x, primary_height() - y - h, w, h);
     if (!NSEqualRects(frame, win.frame)) {
       [win setFrame:frame display:NO animate:NO];
-    }
-    CALayer *layer = win.contentView.layer;
-    layer.cornerRadius = radius;
-    if (@available(macOS 10.13, *)) {
-      // Attached to the notch: round only the bottom corners so the top edge
-      // melts into the camera housing. Floating: round all four.
-      layer.maskedCorners = round_all_corners
-                                ? (kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner |
-                                   kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner)
-                                : (kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner);
     }
   }
 }

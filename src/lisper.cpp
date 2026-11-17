@@ -306,9 +306,6 @@ TranscriptionResult Lisper::transcribe_pcm(const std::vector<float> &pcm,
   params.detect_language = false;
   params.n_threads = config_.threads;
   params.single_segment = single_segment;
-  if (options.audio_ctx > 0) {
-    params.audio_ctx = std::min(options.audio_ctx, 1500);
-  }
   params.token_timestamps = !single_segment;
   params.initial_prompt = effective_prompt.empty() ? nullptr : effective_prompt.c_str();
   params.abort_callback = [](void *user_data) {

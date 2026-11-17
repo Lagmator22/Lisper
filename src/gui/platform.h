@@ -23,10 +23,9 @@ ScreenInfo screen_for_island();
 // Returns true if the window can be drawn with per-pixel transparency.
 bool configure_island_window(SDL_Window *window);
 
-// Move/resize the island. On macOS this bypasses the menu-bar constraint so
-// the island can grow out of the notch, and updates the corner mask.
-void place_island(SDL_Window *window, int x, int y, int w, int h, float radius,
-                  bool round_all_corners);
+// Move/resize the island's canvas window. On macOS this bypasses the
+// menu-bar constraint so the island can grow out of the notch.
+void place_window(SDL_Window *window, int x, int y, int w, int h);
 
 // Remember which app had focus when dictation started, and give focus back to
 // it before pasting (clicking the island may have activated Lisper).

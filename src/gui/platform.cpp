@@ -50,6 +50,19 @@ ScreenInfo screen_for_island() {
   info.w = bounds.w;
   info.h = bounds.h;
   info.top_inset = usable.y - bounds.y; // e.g. a top panel on GNOME
+
+  // Developer aid: preview the notch-attached island on any machine,
+  // e.g. LISPER_SIMULATE_NOTCH=200x32.
+  if (const char *sim = SDL_getenv("LISPER_SIMULATE_NOTCH")) {
+    int w = 0;
+    int h = 0;
+    if (SDL_sscanf(sim, "%dx%d", &w, &h) == 2 && w > 0 && h > 0) {
+      info.has_notch = true;
+      info.notch_w = w;
+      info.notch_h = h;
+      info.top_inset = h;
+    }
+  }
   return info;
 }
 
@@ -80,7 +93,7 @@ bool configure_island_window(SDL_Window *window) {
   return false; // per-pixel transparency is handled via shaped windows here
 }
 
-void place_island(SDL_Window *window, int x, int y, int w, int h, float, bool) {
+void place_window(SDL_Window *window, int x, int y, int w, int h) {
   int cw = 0;
   int ch = 0;
   SDL_GetWindowSize(window, &cw, &ch);
