@@ -179,3 +179,9 @@ int64_t AudioCapture::recorded_ms() const {
   std::lock_guard<std::mutex> lock(mutex_);
   return static_cast<int64_t>(buffer_.size()) * 1000 / kSampleRate;
 }
+
+std::vector<float> AudioCapture::snapshot(size_t max_samples) const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  const size_t n = std::min(max_samples, buffer_.size());
+  return std::vector<float>(buffer_.end() - static_cast<long>(n), buffer_.end());
+}

@@ -58,8 +58,14 @@ public:
 
   const AudioCapture &capture() const { return capture_; }
 
-  // Mark the outcome of inserting a result so the overlay can reflect it.
-  void report_inserted(bool ok, const std::string &message);
+  // Live transcript of the words spoken so far (updated while recording when
+  // live preview is enabled), and the final text once transcribed.
+  std::string live_text() const;
+
+  // Mark the outcome of inserting a result so the island can reflect it:
+  // pasted into the app, or left on the clipboard (with a short hint why).
+  void report_inserted(bool pasted, const std::string &message);
+  bool pasted() const;
 
   // Expose the engine for other features (file transcription) to reuse.
   std::shared_ptr<Lisper> engine() const;
@@ -68,6 +74,8 @@ private:
   void set_phase(Phase phase, const std::string &message = {});
   void load_engine_async(const LisperConfig &config);
   void join_workers();
+  void start_live_preview();
+  void stop_live_preview();
 
   mutable std::mutex mutex_;
   Settings settings_;
@@ -80,6 +88,10 @@ private:
   bool reconfigure_pending_ = false;
   std::thread loader_;
 
+  std::thread live_thread_;
+  std::atomic<bool> live_stop_{false};
+  std::string live_text_;
+
   std::thread decoder_;
   std::atomic<bool> cancel_flag_{false};
   std::optional<Result> result_;
@@ -87,6 +99,7 @@ private:
   Phase phase_ = Phase::Idle;
   std::chrono::steady_clock::time_point phase_since_ = std::chrono::steady_clock::now();
   std::string message_;
+  bool pasted_ = true;
 };
 
 const char *phase_label(Dictation::Phase phase);

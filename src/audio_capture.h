@@ -40,6 +40,10 @@ public:
 
   int64_t recorded_ms() const;
 
+  // Copy of the most recent `max_samples` samples recorded so far, for live
+  // preview transcription while recording continues.
+  std::vector<float> snapshot(size_t max_samples) const;
+
   // Internal: called from the audio thread.
   void on_samples(const float *samples, int count);
 

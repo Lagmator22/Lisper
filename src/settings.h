@@ -20,12 +20,18 @@ struct Settings {
   bool flash_attn = true;
 
   // Dictation
+#ifdef __APPLE__
+  std::string hotkey = "Cmd+Option"; // tap ⌘ and ⌥ together
+#else
   std::string hotkey = "Ctrl+Shift+Space";
+#endif
   bool hotkey_hold = false; // true = push-to-talk, false = toggle
   std::string input_device; // empty = system default microphone
   enum class InsertMode { Paste, Clipboard } insert_mode = InsertMode::Paste;
   bool restore_clipboard = true;
   bool show_overlay = true;
+  bool live_preview = true; // show words while speaking
+  bool island_top = true;   // floating island at the top (notch) or bottom
   bool sounds = true;
   int max_dictation_seconds = 300;
 

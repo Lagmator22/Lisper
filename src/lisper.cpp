@@ -11,7 +11,9 @@ Lisper::Lisper(const LisperConfig &config) : config_(config) {
   whisper_log_set(
       [](ggml_log_level level, const char *text, void *user_data) {
         (void)user_data;
-        if (level == GGML_LOG_LEVEL_ERROR) {
+        // "failed to encode" is also logged when a decode is cancelled on
+        // purpose (live preview, user cancel); the caller reports real errors.
+        if (level == GGML_LOG_LEVEL_ERROR && std::strstr(text, "failed to encode") == nullptr) {
           std::cerr << "whisper.cpp error: " << text;
         }
       },

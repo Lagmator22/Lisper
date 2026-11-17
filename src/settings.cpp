@@ -110,6 +110,8 @@ std::string to_json(const Settings &s) {
       {"insert_mode", s.insert_mode == Settings::InsertMode::Paste ? "paste" : "clipboard"},
       {"restore_clipboard", s.restore_clipboard},
       {"show_overlay", s.show_overlay},
+      {"live_preview", s.live_preview},
+      {"island_top", s.island_top},
       {"sounds", s.sounds},
       {"max_dictation_seconds", s.max_dictation_seconds},
       {"remove_fillers", s.remove_fillers},
@@ -152,6 +154,8 @@ Settings from_json(const std::string &text) {
       insert == "clipboard" ? Settings::InsertMode::Clipboard : Settings::InsertMode::Paste;
   read(j, "restore_clipboard", s.restore_clipboard);
   read(j, "show_overlay", s.show_overlay);
+  read(j, "live_preview", s.live_preview);
+  read(j, "island_top", s.island_top);
   read(j, "sounds", s.sounds);
   read(j, "max_dictation_seconds", s.max_dictation_seconds);
   read(j, "remove_fillers", s.remove_fillers);

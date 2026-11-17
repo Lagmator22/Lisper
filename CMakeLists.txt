@@ -101,7 +101,18 @@ target_link_libraries(lisper-mcp PRIVATE lisper_core)
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/third_party/imgui)
 
 if(LISPER_BUILD_GUI AND SDL2_FOUND AND EXISTS ${IMGUI_DIR}/imgui.cpp)
+    set(LISPER_FONT_DIR ${CMAKE_SOURCE_DIR}/third_party/fonts)
+    set(LISPER_FONTS_C ${CMAKE_BINARY_DIR}/generated/lisper_fonts.c)
+    file(GLOB LISPER_FONT_FILES ${LISPER_FONT_DIR}/*.ttf)
+    add_custom_command(
+        OUTPUT ${LISPER_FONTS_C}
+        COMMAND ${CMAKE_COMMAND} -DOUT=${LISPER_FONTS_C} -DFONT_DIR=${LISPER_FONT_DIR}
+                -P ${CMAKE_SOURCE_DIR}/cmake/embed_fonts.cmake
+        DEPENDS ${LISPER_FONT_FILES} ${CMAKE_SOURCE_DIR}/cmake/embed_fonts.cmake
+        COMMENT "Embedding UI fonts")
+
     add_executable(lisper_gui
+        ${LISPER_FONTS_C}
         src/gui_main.cpp
         src/gui_app.cpp
         src/gui/state.cpp
@@ -115,6 +126,7 @@ if(LISPER_BUILD_GUI AND SDL2_FOUND AND EXISTS ${IMGUI_DIR}/imgui.cpp)
         src/gui/sounds.cpp
         src/gui/dictation.cpp
         src/gui/overlay.cpp
+        src/gui/platform.cpp
         third_party/tinyfiledialogs/tinyfiledialogs.c
         ${IMGUI_DIR}/imgui.cpp
         ${IMGUI_DIR}/imgui_draw.cpp
@@ -141,8 +153,12 @@ if(LISPER_BUILD_GUI AND SDL2_FOUND AND EXISTS ${IMGUI_DIR}/imgui.cpp)
             target_link_options(lisper_gui PRIVATE /ENTRY:mainCRTStartup)
         endif()
     elseif(APPLE)
+        enable_language(OBJCXX)
+        target_sources(lisper_gui PRIVATE src/gui/platform_mac.mm)
+        set_source_files_properties(src/gui/platform_mac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
         target_link_libraries(lisper_gui PRIVATE
-            "-framework Carbon" "-framework ApplicationServices" "-framework CoreFoundation")
+            "-framework Carbon" "-framework ApplicationServices" "-framework CoreFoundation"
+            "-framework AppKit" "-framework QuartzCore")
         set_target_properties(lisper_gui PROPERTIES
             MACOSX_BUNDLE TRUE
             OUTPUT_NAME "Lisper"

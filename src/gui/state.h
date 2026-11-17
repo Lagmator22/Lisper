@@ -52,6 +52,7 @@ struct AppState {
 
   // --- Flow-style app state ---
   Page page = Page::Home;
+  double page_changed_at = 0.0; // for the page transition
   Settings settings;
   bool settings_dirty = false; // saved (debounced) by the main loop
 

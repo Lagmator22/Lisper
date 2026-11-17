@@ -44,8 +44,64 @@ Dictation::Dictation() = default;
 
 Dictation::~Dictation() {
   cancel_flag_ = true;
+  stop_live_preview();
   capture_.cancel();
   join_workers();
+}
+
+std::string Dictation::live_text() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return live_text_;
+}
+
+void Dictation::start_live_preview() {
+  stop_live_preview();
+  live_stop_ = false;
+  live_thread_ = std::thread([this] {
+    constexpr size_t kWindow = 16000 * 24; // decode at most the last 24 s
+    constexpr size_t kMinAudio = 16000 * 8 / 10;
+    size_t last_size = 0;
+    while (!live_stop_) {
+      for (int i = 0; i < 6 && !live_stop_; ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+      if (live_stop_) {
+        break;
+      }
+      std::shared_ptr<Lisper> engine;
+      text_cleanup::Options cleanup;
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        engine = engine_;
+        cleanup = settings_.cleanup_options();
+      }
+      const auto pcm = capture_.snapshot(kWindow);
+      const int64_t total = capture_.recorded_ms() * 16;
+      if (!engine || pcm.size() < kMinAudio || static_cast<size_t>(total) == last_size) {
+        continue;
+      }
+      last_size = static_cast<size_t>(total);
+
+      DecodeOptions options;
+      options.cancel = &live_stop_;
+      const TranscriptionResult r = engine->transcribe_pcm(pcm, options);
+      if (live_stop_ || !r.success) {
+        continue;
+      }
+      const std::string text = text_cleanup::clean(r.full_text, cleanup);
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (phase_ == Phase::Recording) {
+        live_text_ = text;
+      }
+    }
+  });
+}
+
+void Dictation::stop_live_preview() {
+  live_stop_ = true; // also aborts an in-flight preview decode
+  if (live_thread_.joinable()) {
+    live_thread_.join();
+  }
 }
 
 void Dictation::join_workers() {
@@ -131,7 +187,14 @@ void Dictation::start() {
     return;
   }
   lock.lock();
+  live_text_.clear();
+  pasted_ = true;
   set_phase(Phase::Recording);
+  const bool live = settings_.live_preview;
+  lock.unlock();
+  if (live) {
+    start_live_preview();
+  }
 }
 
 void Dictation::stop() {
@@ -141,6 +204,7 @@ void Dictation::stop() {
       return;
     }
   }
+  stop_live_preview();
   std::vector<float> pcm = capture_.stop();
 
   std::lock_guard<std::mutex> lock(mutex_);
@@ -198,6 +262,7 @@ void Dictation::stop() {
       set_phase(Phase::Idle, "No speech detected");
       return;
     }
+    live_text_ = out.text;
     result_ = std::move(out);
     set_phase(Phase::Done);
   });
@@ -205,6 +270,7 @@ void Dictation::stop() {
 
 void Dictation::cancel() {
   cancel_flag_ = true;
+  stop_live_preview();
   capture_.cancel();
   std::lock_guard<std::mutex> lock(mutex_);
   if (phase_ == Phase::Recording) {
@@ -240,7 +306,7 @@ void Dictation::update() {
         std::chrono::duration<float>(std::chrono::steady_clock::now() - phase_since_).count();
     if (phase_ == Phase::Recording) {
       hit_limit = elapsed >= static_cast<float>(settings_.max_dictation_seconds);
-    } else if ((phase_ == Phase::Done && elapsed > 1.4f && !result_) ||
+    } else if ((phase_ == Phase::Done && elapsed > (pasted_ ? 1.6f : 3.2f) && !result_) ||
                (phase_ == Phase::Error && elapsed > 4.0f)) {
       set_phase(Phase::Idle, phase_ == Phase::Error ? message_ : std::string());
     }
@@ -263,13 +329,17 @@ std::optional<Dictation::Result> Dictation::consume_result() {
   return r;
 }
 
-void Dictation::report_inserted(bool ok, const std::string &message) {
+void Dictation::report_inserted(bool pasted, const std::string &message) {
+  // Not being able to paste is not a failure: the text is on the clipboard.
   std::lock_guard<std::mutex> lock(mutex_);
-  if (!ok) {
-    set_phase(Phase::Error, message);
-  } else {
-    message_ = message;
-  }
+  pasted_ = pasted;
+  message_ = message;
+  phase_since_ = std::chrono::steady_clock::now();
+}
+
+bool Dictation::pasted() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return pasted_;
 }
 
 Dictation::Phase Dictation::phase() const {

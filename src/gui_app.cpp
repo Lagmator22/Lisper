@@ -6,6 +6,7 @@
 #include "gui/hotkey.h"
 #include "gui/layout.h"
 #include "gui/overlay.h"
+#include "gui/platform.h"
 #include "gui/sounds.h"
 #include "gui/state.h"
 #include "gui/text_insert.h"
@@ -41,6 +42,7 @@ constexpr float kMouseWheelScale = 0.32f;
 enum UserCode : Sint32 {
   kHotkeyDown = 1,
   kHotkeyUp = 2,
+  kHotkeyCancel = 8,
   kControlToggle = 3,
   kControlShow = 4,
   kControlStart = 5,
@@ -240,11 +242,20 @@ int run_gui_app(int argc, char **argv) {
   gui::GlobalHotkey hotkey;
   dictation.configure(state.settings);
 
+  Uint64 hotkey_down_at = 0;
+  bool hotkey_is_chord = false;
+  int capture_mods = 0;
   auto rebind_hotkey = [&] {
     const gui::Hotkey hk = gui::parse_hotkey(state.settings.hotkey);
+    hotkey_is_chord = hk.is_chord();
     state.hotkey_error.clear();
     state.hotkey_registered = hotkey.register_hotkey(
-        hk, [](bool pressed) { post_user_event(pressed ? kHotkeyDown : kHotkeyUp); },
+        hk,
+        [](gui::HotkeyEvent e) {
+          post_user_event(e == gui::HotkeyEvent::Pressed    ? kHotkeyDown
+                          : e == gui::HotkeyEvent::Released ? kHotkeyUp
+                                                            : kHotkeyCancel);
+        },
         state.hotkey_error);
   };
   rebind_hotkey();
@@ -328,17 +339,31 @@ int run_gui_app(int argc, char **argv) {
       } else if (event.type == g_user_event) {
         switch (event.user.code) {
         case kHotkeyDown:
+          hotkey_down_at = SDL_GetTicks64();
           if (!state.capturing_hotkey) {
             if (state.settings.hotkey_hold) {
               dictation.start();
-            } else {
-              dictation.toggle();
+            } else if (!hotkey_is_chord) {
+              dictation.toggle(); // key shortcuts toggle on press
             }
           }
           break;
         case kHotkeyUp:
+          if (state.capturing_hotkey) {
+            break;
+          }
           if (state.settings.hotkey_hold) {
             dictation.stop();
+          } else if (hotkey_is_chord && SDL_GetTicks64() - hotkey_down_at < 1200) {
+            // Modifier chords toggle on a clean, quick tap (e.g. ⌘⌥).
+            dictation.toggle();
+          }
+          break;
+        case kHotkeyCancel:
+          // The chord was part of another shortcut (⌘⌥Esc, ⌘⌥-drag...).
+          if (state.settings.hotkey_hold && dictation.phase() == gui::Dictation::Phase::Recording &&
+              dictation.capture().recorded_ms() < 1500) {
+            dictation.cancel();
           }
           break;
         case kControlToggle:
@@ -364,17 +389,42 @@ int run_gui_app(int argc, char **argv) {
           break;
         }
       } else {
-        // Capture a new shortcut in Settings before ImGui sees the key.
-        if (state.capturing_hotkey && event.type == SDL_KEYDOWN && !event.key.repeat) {
-          if (event.key.keysym.sym == SDLK_ESCAPE) {
+        // Record a new shortcut in Settings before ImGui sees the keys. A key
+        // with modifiers is recorded on press; modifiers alone (e.g. ⌘⌥) are
+        // recorded when they are released.
+        const bool is_key_event = event.type == SDL_KEYDOWN || event.type == SDL_KEYUP;
+        if (state.capturing_hotkey && is_key_event) {
+          const SDL_Keycode sym = event.key.keysym.sym;
+          const bool modifier_key = sym == SDLK_LCTRL || sym == SDLK_RCTRL || sym == SDLK_LALT ||
+                                    sym == SDLK_RALT || sym == SDLK_LSHIFT || sym == SDLK_RSHIFT ||
+                                    sym == SDLK_LGUI || sym == SDLK_RGUI;
+          auto commit = [&](const gui::Hotkey &hk) {
+            state.settings.hotkey = hk.to_string();
             state.capturing_hotkey = false;
-          } else {
-            const gui::Hotkey hk = gui::hotkey_from_sdl(event.key.keysym.sym, event.key.keysym.mod);
-            if (hk.valid()) {
-              state.settings.hotkey = hk.to_string();
+            state.settings_dirty = true;
+            capture_mods = 0;
+            rebind_hotkey();
+          };
+          if (event.type == SDL_KEYDOWN && !event.key.repeat) {
+            if (sym == SDLK_ESCAPE) {
               state.capturing_hotkey = false;
-              state.settings_dirty = true;
-              rebind_hotkey();
+              capture_mods = 0;
+            } else if (modifier_key) {
+              capture_mods |= event.key.keysym.mod;
+            } else {
+              const gui::Hotkey hk = gui::hotkey_from_sdl(sym, event.key.keysym.mod);
+              if (hk.valid()) {
+                commit(hk);
+              } else {
+                capture_mods = 0;
+              }
+            }
+          } else if (event.type == SDL_KEYUP && modifier_key &&
+                     (event.key.keysym.mod & (KMOD_CTRL | KMOD_ALT | KMOD_SHIFT | KMOD_GUI)) == 0) {
+            const gui::Hotkey chord = gui::chord_from_sdl(capture_mods);
+            capture_mods = 0;
+            if (chord.valid()) {
+              commit(chord);
             }
           }
         } else {
@@ -413,6 +463,9 @@ int run_gui_app(int argc, char **argv) {
     // --- dictation lifecycle -------------------------------------------------
     dictation.update();
     const gui::Dictation::Phase phase = dictation.phase();
+    if (phase != last_phase && phase == gui::Dictation::Phase::Recording) {
+      gui::platform::remember_focus();
+    }
     if (phase != last_phase && state.settings.sounds) {
       if (phase == gui::Dictation::Phase::Recording) {
         gui::play_chime(gui::Chime::Start);
@@ -437,12 +490,17 @@ int run_gui_app(int argc, char **argv) {
         SDL_free(prev);
       }
       SDL_SetClipboardText(result->text.c_str());
-      // Give the user a moment to release the shortcut's modifier keys.
-      pending.paste_at = SDL_GetTicks64() + 120;
+      if (pending.paste) {
+        // Hand focus back to the app the user was dictating into (clicking
+        // the island can activate Lisper), then paste once it is frontmost.
+        gui::platform::restore_focus();
+      }
+      // Also gives the user a moment to release the shortcut's modifier keys.
+      pending.paste_at = SDL_GetTicks64() + 160;
       if (!pending.paste) {
-        dictation.report_inserted(true, app_focused ? "Copied: switch to an app and dictate there "
-                                                      "to insert directly"
-                                                    : "Copied to clipboard");
+        dictation.report_inserted(false, app_focused
+                                             ? "Copied. Dictate in another app to type it there."
+                                             : "Copied to your clipboard.");
         pending.active = false;
         gui::show_toast(state, "Copied to clipboard");
       }
@@ -460,6 +518,9 @@ int run_gui_app(int argc, char **argv) {
         std::string error;
         const bool ok = gui::send_paste_keystroke(error);
         dictation.report_inserted(ok, ok ? "" : error);
+        if (!ok) {
+          gui::show_toast(state, "Copied. Paste it where you need it.");
+        }
         if (!ok) {
           state.paste_hint = error;
           pending.restore = false; // leave the text on the clipboard
@@ -504,7 +565,7 @@ int run_gui_app(int argc, char **argv) {
     }
 
     // --- render ---------------------------------------------------------------
-    overlay.update(dictation, state.settings.show_overlay, state.settings.dark_theme);
+    overlay.update(dictation, state.settings);
 
     if (!minimized) {
       ImGui_ImplSDLRenderer2_NewFrame();
