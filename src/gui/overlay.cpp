@@ -25,6 +25,10 @@ constexpr float kFloatMargin = 12.0f;
 // (SDL2 shaped windows cannot be resized safely).
 constexpr int kCanvasW = 560;
 constexpr int kCanvasH = 200;
+// SDL2's X11 shape bitmap distorts when the width isn't a multiple of 8.
+static_assert(kCanvasW % 8 == 0, "island canvas width must be a multiple of 8");
+// Concave "shoulders" where the island meets the top edge, like the notch.
+constexpr float kShoulder = 8.0f;
 
 float ease_out_cubic(float t) {
   t = std::clamp(t, 0.0f, 1.0f);
@@ -159,7 +163,7 @@ bool Overlay::ensure_window() {
     destroy();
     return false;
   }
-  transparent_ = platform::configure_island_window(window_);
+  transparent_ = platform::configure_island_window(window_, renderer_);
 
   int ww = 0;
   int wh = 0;
@@ -220,6 +224,26 @@ void Overlay::apply_shape(int ix, int iy, int iw, int ih, float radius) {
       const float dy = py - cy;
       if (dx * dx + dy * dy <= r * r) {
         row[x] = on;
+      }
+    }
+  }
+  if (attached_top_) {
+    // Fill the shoulders: a square of kShoulder beside each top corner minus
+    // a quarter circle, giving a concave curve into the top edge.
+    const int sh = static_cast<int>(kShoulder);
+    for (int y = 0; y < std::min(sh, kCanvasH); ++y) {
+      auto *row = static_cast<Uint32 *>(mask->pixels) + y * (mask->pitch / 4);
+      for (int side = 0; side < 2; ++side) {
+        const int start = side == 0 ? ix - sh : ix + iw;
+        const float ccx =
+            side == 0 ? static_cast<float>(ix - sh) : static_cast<float>(ix + iw + sh);
+        for (int x = std::max(0, start); x < std::min(kCanvasW, start + sh); ++x) {
+          const float dx = static_cast<float>(x) + 0.5f - ccx;
+          const float dy = static_cast<float>(y) + 0.5f - kShoulder;
+          if (dx * dx + dy * dy > kShoulder * kShoulder) {
+            row[x] = on;
+          }
+        }
       }
     }
   }
@@ -320,7 +344,7 @@ void Overlay::update(const Dictation &dictation, const Settings &settings) {
     std::fill(bars_.begin(), bars_.end(), 0.0f);
     SDL_ShowWindow(window_);
     // Re-assert level/Spaces behaviour: some platforms reset it on show.
-    transparent_ = platform::configure_island_window(window_) || transparent_;
+    transparent_ = platform::configure_island_window(window_, renderer_) || transparent_;
     visible_ = true;
   }
 
@@ -427,6 +451,18 @@ void Overlay::render(const Dictation &dictation, float dt) {
   const ImDrawFlags corners =
       attached_top_ ? ImDrawFlags_RoundCornersBottom : ImDrawFlags_RoundCornersAll;
   dl->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(0, 0, 0, 255), radius, corners);
+  if (attached_top_) {
+    // Concave shoulders blending the island into the top edge / notch: a fan
+    // from the island's top corner around a quarter arc whose end points are
+    // the tangent points seen from that corner.
+    const float k = kShoulder;
+    dl->PathLineTo(ImVec2(0.0f, 0.0f));
+    dl->PathArcTo(ImVec2(-k, k), k, 0.0f, -kPi * 0.5f, 10);
+    dl->PathFillConvex(IM_COL32(0, 0, 0, 255));
+    dl->PathLineTo(ImVec2(W, 0.0f));
+    dl->PathArcTo(ImVec2(W + k, k), k, kPi, kPi * 1.5f, 10);
+    dl->PathFillConvex(IM_COL32(0, 0, 0, 255));
+  }
   if (hovered_ && phase == Dictation::Phase::Recording) {
     dl->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(255, 255, 255, 10), radius, corners);
   }

@@ -66,7 +66,7 @@ ScreenInfo screen_for_island() {
   return info;
 }
 
-bool configure_island_window(SDL_Window *window) {
+bool configure_island_window(SDL_Window *window, SDL_Renderer *) {
   SDL_SysWMinfo wm;
   SDL_VERSION(&wm.version);
   if (!SDL_GetWindowWMInfo(window, &wm)) {

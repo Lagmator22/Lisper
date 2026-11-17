@@ -21,7 +21,8 @@ ScreenInfo screen_for_island();
 // menu bar on macOS, visible on all Spaces and over full-screen apps,
 // transparent outside the rounded shape where the platform allows it.
 // Returns true if the window can be drawn with per-pixel transparency.
-bool configure_island_window(SDL_Window *window);
+// `renderer` (may be null) lets macOS reach the CAMetalLayer it draws into.
+bool configure_island_window(SDL_Window *window, SDL_Renderer *renderer);
 
 // Move/resize the island's canvas window. On macOS this bypasses the
 // menu-bar constraint so the island can grow out of the notch.

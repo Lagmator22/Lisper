@@ -3,6 +3,7 @@
 #include "gui/platform.h"
 
 #import <AppKit/AppKit.h>
+#import <QuartzCore/CAMetalLayer.h>
 #import <QuartzCore/QuartzCore.h>
 
 #include <SDL2/SDL_syswm.h>
@@ -73,7 +74,7 @@ ScreenInfo screen_for_island() {
   return info;
 }
 
-bool configure_island_window(SDL_Window *window) {
+bool configure_island_window(SDL_Window *window, SDL_Renderer *renderer) {
   @autoreleasepool {
     NSWindow *win = ns_window(window);
     if (win == nil) {
@@ -96,8 +97,22 @@ bool configure_island_window(SDL_Window *window) {
     view.layer.backgroundColor = [NSColor clearColor].CGColor;
     view.layer.opaque = NO;
     for (NSView *sub in view.subviews) {
+      // SDL's SDL_cocoametalview hosts the CAMetalLayer we render into.
       sub.wantsLayer = YES;
-      sub.layer.opaque = NO; // CAMetalLayer / GL layer: keep alpha
+      sub.layer.opaque = NO;
+      sub.layer.backgroundColor = [NSColor clearColor].CGColor;
+    }
+    // Most reliable: ask SDL for the exact layer its Metal renderer uses.
+    // A non-opaque Metal layer is what makes cleared (alpha 0) pixels show
+    // the desktop instead of black, i.e. no square corners.
+    if (renderer != nullptr) {
+      if (void *raw = SDL_RenderGetMetalLayer(renderer)) {
+        CAMetalLayer *metal = (__bridge CAMetalLayer *)raw;
+        metal.opaque = NO;
+        metal.backgroundColor = [NSColor clearColor].CGColor;
+        return true;
+      }
+      return false; // not the Metal renderer: transparency isn't guaranteed
     }
     return true;
   }
