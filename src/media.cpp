@@ -15,6 +15,7 @@
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
+#include <share.h>
 #include <sys/stat.h>
 #else
 #include <fcntl.h>

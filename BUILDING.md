@@ -20,7 +20,9 @@ This document provides detailed instructions for building Lisper on various plat
 - FFmpeg (for audio/video processing)
 
 ### Optional
-- SDL2 2.0+ (for GUI and live transcription)
+- SDL2 2.0.18+ (for the desktop app, dictation and live transcription)
+- curl (for model downloads)
+- Linux only: X11 headers for the global dictation shortcut, and `xdotool` (X11) or `wtype` (Wayland) at runtime for pasting
 - OpenVINO (for Intel hardware acceleration)
 - CUDA Toolkit (for NVIDIA GPU support)
 
@@ -86,8 +88,10 @@ sudo apt-get install -y \
 # Install dependencies
 sudo apt-get install -y \
   ffmpeg \
+  curl \
   libsdl2-dev \
-  libsdl2-ttf-dev
+  libx11-dev \
+  xdotool        # or wtype on Wayland
 
 # Clone and build
 git clone --recursive https://github.com/Lagmator22/Lisper.git
@@ -111,7 +115,8 @@ sudo dnf install \
   ffmpeg \
   ffmpeg-devel \
   SDL2-devel \
-  SDL2_ttf-devel
+  libX11-devel \
+  xdotool
 
 # Build
 git clone --recursive https://github.com/Lagmator22/Lisper.git
@@ -125,7 +130,7 @@ cmake --build build -j$(nproc)
 
 ```bash
 # Install dependencies
-sudo pacman -S base-devel cmake git ffmpeg sdl2 sdl2_ttf
+sudo pacman -S base-devel cmake git ffmpeg sdl2 libx11 xdotool
 
 # Build
 git clone --recursive https://github.com/Lagmator22/Lisper.git
@@ -205,7 +210,9 @@ cmake --build build -j
 ```bash
 # Basic options
 -DCMAKE_BUILD_TYPE=Release|Debug|RelWithDebInfo  # Build type
--DLISPER_ENABLE_LIVE=ON|OFF                      # Enable live transcription (requires SDL2)
+-DLISPER_ENABLE_LIVE=ON|OFF                      # Microphone capture: dictation, live mode, MCP recording (requires SDL2)
+-DLISPER_BUILD_GUI=ON|OFF                        # Desktop app (requires SDL2)
+-DLISPER_BUILD_TESTS=ON|OFF                      # Unit tests, run with ctest
 -DLISPER_BUILD_GUI=ON|OFF                        # Build GUI application
 -DLISPER_BUILD_TESTS=ON|OFF                      # Build test suite
 

@@ -49,14 +49,7 @@ jobs:
           cmake \
           ffmpeg \
           libsdl2-dev \
-          libsdl2-ttf-dev \
-          libavcodec-dev \
-          libavformat-dev \
-          libavutil-dev \
-          libswresample-dev \
-          gcc-11 \
-          g++-11 \
-          clang-14
+          libx11-dev
 
     - name: Configure CMake
       env:
@@ -85,6 +78,15 @@ jobs:
         ctest --output-on-failure
         # End-to-end transcription with the tiny model
         ./lisper --no-animate -m models/ggml-tiny.bin ../third_party/whisper.cpp/samples/jfk.wav
+        # MCP server: handshake, tool listing and a real transcription
+        printf '%s\n' \
+          '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
+          '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+          '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"transcribe_file","arguments":{"path":"'"$GITHUB_WORKSPACE"'/third_party/whisper.cpp/samples/jfk.wav"}}}' \
+          | ./lisper-mcp -m models/ggml-tiny.bin --allow-dir "$GITHUB_WORKSPACE" | tee mcp.out
+        grep -q '"protocolVersion":"2025-06-18"' mcp.out
+        grep -q 'transcribe_file' mcp.out
+        grep -qi 'fellow americans' mcp.out
 
   build-macos:
     runs-on: macos-latest
@@ -97,7 +99,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install cmake ffmpeg sdl2 sdl2_ttf
+        brew install cmake ffmpeg sdl2
 
     - name: Configure CMake
       run: |
@@ -155,6 +157,7 @@ jobs:
         copy bin\Release\*.dll Release\
         Release\lisper.exe --help
         Release\lisper.exe --list-model-profiles
+        Release\lisper-mcp.exe --help
 
   code-quality:
     runs-on: ubuntu-latest

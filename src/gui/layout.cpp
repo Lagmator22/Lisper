@@ -6,6 +6,7 @@
 #include "paths.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <ctime>

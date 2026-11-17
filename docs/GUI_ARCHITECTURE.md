@@ -1,64 +1,66 @@
-# GUI Architecture
+# Desktop App Architecture
 
-## Research Inputs
+The desktop app (`lisper_gui`) is a dictation-first tool in the style of Wispr
+Flow: it lives in the background, listens when you press a shortcut, and types
+cleaned-up text into whatever app has focus. File transcription is a secondary
+page.
 
-This redesign used a few concrete desktop references:
+## Stack
 
-- Wispr Flow: minimal dictation-first framing and low-friction interaction model.
-- Whisper4Windows: focused settings panel plus a restrained processing-wave animation.
-- GitHub Desktop: reliable setup/navigation on the left with a document-style work area on the right.
-- Microsoft PowerToys: responsive settings surfaces, consistent spacing, and small-window resilience.
+- **SDL2:** window, renderer, audio capture and playback, clipboard, shaped
+  overlay window.
+- **Dear ImGui + SDL_Renderer:** the main window UI.
+- **Plain SDL_RenderGeometry:** the floating bar (no ImGui), so it can live in
+  its own small window.
+- **lisper_core:** engine, text cleanup, settings, history, shared with the CLI
+  and the MCP server.
 
-## Chosen Stack
+## Threads
 
-The GUI stack stays native to this repository:
+| Thread | Work |
+|---|---|
+| UI (main) | Events, rendering, clipboard and paste sequencing, settings saves |
+| Model loader | Loads whisper weights when the model or device changes |
+| SDL audio | Microphone callback: appends samples and level meter values |
+| Decoder | One per dictation: whisper decode + text cleanup |
+| File job | `BackgroundTranscriber`: ffmpeg + decode for the Transcribe page |
+| Hotkey | Windows message loop / X11 event loop for the global shortcut |
+| Control socket | Accepts `toggle` / `show` / `start` / `stop` from `lisper_gui --toggle` |
+| Download | curl model download |
 
-- `SDL2`
-  Cross-platform desktop window, input, drag-drop, and renderer setup already fits the existing project.
-- `Dear ImGui` + `SDL_Renderer`
-  Fast to ship in C++, easy to theme, and good for stable operator-style desktop tooling.
-- `tinyfiledialogs`
-  Adds native file and folder pickers without forcing a larger framework migration.
-- Existing `lisper_core`
-  The GUI remains a thin app layer over the same transcription engine the CLI uses.
+Background threads never touch UI state directly; they post SDL user events
+(`SDL_PushEvent` is thread-safe) or update state behind a mutex that the UI
+polls. Cancellation is per job (`DecodeOptions::cancel`), so cancelling a file
+transcription never aborts a dictation.
 
-This is intentionally not a Qt/Electron/Tauri rewrite. Those stacks can produce polished apps, but they would replace too much of the current build/runtime model to be the right move for this repository right now.
+## Dictation flow
 
-## UI Structure
+```
+shortcut ─▶ Dictation::start ─▶ AudioCapture (16 kHz mono float)
+                                        │ levels ─▶ Overlay waveform
+shortcut ─▶ Dictation::stop ─▶ decoder thread
+                                        │ whisper (initial prompt = vocabulary)
+                                        │ text_cleanup (fillers, commands, dictionary, snippets, style)
+                                        ▼
+UI thread: clipboard ← text ─▶ paste keystroke (CGEventPost / SendInput / wtype / xdotool)
+           ─▶ restore previous clipboard ─▶ history.jsonl
+```
 
-The design follows a three-zone layout:
+If Lisper's own window has focus when the text is ready, it only copies to the
+clipboard instead of pasting into itself.
 
-1. Header
-   Large LISPER identity, status chips, and a processing-wave animation.
-2. Setup Sidebar
-   Input, output, model/device, and run controls in one scrollable configuration surface.
-3. Workspace
-   Transcript preview, activity log, and diagnostics in a separate tabbed work area.
+## Files
 
-This matches the broad pattern used by strong desktop apps: configuration stays isolated, the active surface stays uncluttered, and motion only indicates state changes.
-
-## File Structure
-
-The GUI is split under `src/gui/`:
-
-- `state.h/.cpp`
-  App state, formatting helpers, profile/device mapping, validation, and request building.
-- `theme.h/.cpp`
-  Color system, fonts, surfaces, pills, buttons, background drawing, and the processing wave.
-- `background_transcriber.h/.cpp`
-  Background job runner and lifecycle management around the existing transcription engine.
-- `file_dialog.h/.cpp`
-  Native input/output pickers via `tinyfiledialogs`.
-- `layout.h/.cpp`
-  Header, sidebar, workspace, tabs, and responsive layout composition.
-- `gui_app.cpp`
-  SDL + ImGui bootstrapping, event loop, and top-level state orchestration.
-
-## Next Extensions
-
-If the GUI needs another pass after this split, the next improvements should be:
-
-- native model downloader / model manager
-- waveform or timeline preview for completed transcripts
-- persistent recent-files history
-- global hotkey / tray mode
+| File | Responsibility |
+|---|---|
+| `gui_app.cpp` | App shell: CLI flags, single instance, event loop, insertion, persistence |
+| `gui/dictation.*` | Dictation state machine, model loading, decoding |
+| `gui/overlay.*` | Floating bar window |
+| `gui/hotkey.*` | Global shortcut per platform, shortcut parsing |
+| `gui/text_insert.*` | Paste keystroke per platform, permission checks |
+| `gui/control_channel.*` | Single-instance Unix socket |
+| `gui/sounds.*` | Synthesized start/stop/error chimes |
+| `gui/layout.*` | Pages and sidebar |
+| `gui/theme.*` | Light/dark palettes and widgets (cards, toggles, segmented controls, keycaps, icons) |
+| `gui/state.*` | UI state and file-job request building |
+| `gui/background_transcriber.*` | File transcription worker |

@@ -135,7 +135,11 @@ if(LISPER_BUILD_GUI AND SDL2_FOUND AND EXISTS ${IMGUI_DIR}/imgui.cpp)
     target_link_libraries(lisper_gui PRIVATE lisper_core PkgConfig::SDL2)
     if(WIN32)
         target_link_libraries(lisper_gui PRIVATE comdlg32 ole32 user32)
-        set_target_properties(lisper_gui PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
+        # GUI subsystem (no console window) while keeping a standard main().
+        set_target_properties(lisper_gui PROPERTIES WIN32_EXECUTABLE TRUE)
+        if(MSVC)
+            target_link_options(lisper_gui PRIVATE /ENTRY:mainCRTStartup)
+        endif()
     elseif(APPLE)
         target_link_libraries(lisper_gui PRIVATE
             "-framework Carbon" "-framework ApplicationServices" "-framework CoreFoundation")

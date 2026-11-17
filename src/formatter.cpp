@@ -103,8 +103,11 @@ static std::string format_json(const TranscriptionResult &result, const std::str
 
   for (size_t i = 0; i < result.segments.size(); i++) {
     const auto &seg = result.segments[i];
-    ss << "    {" << "\"start\": " << seg.start_ms << ", " << "\"end\": " << seg.end_ms << ", "
-       << "\"text\": \"" << escape_json(seg.text) << "\"" << "}";
+    ss << "    {"
+       << "\"start\": " << seg.start_ms << ", "
+       << "\"end\": " << seg.end_ms << ", "
+       << "\"text\": \"" << escape_json(seg.text) << "\""
+       << "}";
     if (i + 1 < result.segments.size())
       ss << ",";
     ss << "\n";
