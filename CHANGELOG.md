@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.4.0] - 2026-11-17
+
+### Dictation
+- Notch island: the dictation indicator grows out of the MacBook notch (above the menu bar,
+  on every Space and over full-screen apps) with spring animation and hides back into it when
+  idle; it hangs from the top or floats at the bottom on other screens.
+- Real-time words: a live preview transcribes the microphone buffer while you speak and shows
+  the text in the island and on Home.
+- Tap ⌘⌥ (macOS default) to start and stop; any modifier-only chord works, and chords used as
+  part of another shortcut or a drag are ignored. Hold-to-talk works with chords too.
+- Focus goes back to the app you were dictating into before pasting, even after clicking the
+  island; a failed paste is reported as "Copied" rather than an error.
+
+### Design
+- New visual language: warm paper palette with a clay accent, Source Serif 4 headings and
+  Inter text bundled into the binary, refined outline icons, soft card shadows.
+- Motion throughout: page transitions, spring navigation indicator and toggles, sliding
+  segmented controls, eased hover/press states, count-up stats, history rows sliding in,
+  toast slide-up, and a dictation orb that breathes, ripples with the live microphone level
+  and resolves into a check.
+
+### Engineering
+- Island renders through its own ImGui context in a fixed canvas window with an animated
+  shape (works around SDL2 shaped windows not supporting resize).
+- whisper.cpp and ggml are linked statically.
+- Final dictation pass is faster while the preview runs (one core left free for the UI).
+
 ## [0.3.0] - 2026-11-17
 
 ### Dictation app (Wispr Flow style)

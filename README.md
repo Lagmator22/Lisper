@@ -17,10 +17,16 @@ Nothing leaves your computer.
 
 ## What it does
 
-**Dictate anywhere.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> (configurable, toggle
-or hold-to-talk) in any text field. A small floating bar shows your voice while you speak.
-When you stop, Lisper transcribes locally with [whisper.cpp](https://github.com/ggerganov/whisper.cpp),
-cleans the text up and pastes it where your cursor is.
+**Dictate anywhere.** On a Mac, tap <kbd>⌘</kbd> and <kbd>⌥</kbd> together in any text field
+(on Windows and Linux: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>; any shortcut or modifier
+chord works, as a toggle or hold-to-talk). A black island grows out of the MacBook notch, shows
+your voice as a live waveform and **writes your words as you speak**. Tap again and Lisper
+finishes the transcript locally with [whisper.cpp](https://github.com/ggerganov/whisper.cpp),
+cleans it up and types it where your cursor is. When it's idle, the island hides back in the notch.
+
+<div align="center">
+<img src="docs/images/island.png" alt="The island: listening with live words, writing, done" width="820">
+</div>
 
 - **Cleanup:** removes filler words ("um", "uh"), understands "new line" / "new paragraph",
   formal or casual style.
@@ -40,8 +46,8 @@ server, so Claude Desktop, Claude Code, Cursor, VS Code and other MCP clients ca
 or take dictation through Lisper, still fully on-device. See [docs/MCP.md](docs/MCP.md).
 
 <div align="center">
-<img src="docs/images/dictating.png" alt="Dictating with the floating bar" width="400">
-<img src="docs/images/settings_dark.png" alt="Settings in dark mode" width="400">
+<img src="docs/images/dictating.png" alt="Dictating: live words on Home and in the island" width="410">
+<img src="docs/images/dark.png" alt="Dark theme" width="410">
 </div>
 
 ## Install
@@ -69,7 +75,7 @@ lisper --model-profile quality --download-model
 
 | | Global shortcut | Paste into apps | Notes |
 |---|---|---|---|
-| **macOS** | Built in | Built in | Grant **Microphone** and **Accessibility** access when prompted. |
+| **macOS** | Built in (default: tap ⌘⌥) | Built in | Grant **Microphone** and **Accessibility** access when prompted. The island sits in the notch on MacBooks, or hangs from the menu bar on other displays. |
 | **Windows** | Built in | Built in | Apps running as administrator can't receive paste from a normal app. |
 | **Linux (X11)** | Built in | Install `xdotool` | |
 | **Linux (Wayland)** | Bind a system shortcut to `lisper_gui --toggle` | Install `wtype` | Compositors don't allow apps to grab global keys. |
@@ -86,6 +92,15 @@ lisper_gui recording.m4a   # open a file on the Transcribe page
 Closing the window minimizes Lisper so the shortcut keeps working (configurable).
 Use **Settings → Quit Lisper** to exit.
 
+**Shortcuts.** Tap the shortcut to start and tap again to insert, or switch to hold-to-talk.
+Modifier-only chords such as ⌘⌥ only fire on a clean tap, so ⌘⌥Esc, ⌘⌥-drag or AltGr typing never
+start a dictation. Record any shortcut in **Settings → Shortcut**.
+
+**The island** shows a live waveform from your microphone, a timer, and your words while you
+talk (turn off *Live preview* to save CPU on slow machines). Click it to stop. If Lisper can't paste
+into the app (for example a missing `xdotool` on Linux), the island says *Copied* and the text is
+on your clipboard.
+
 | Page | What's there |
 |---|---|
 | Home | Dictation card, stats, searchable history (copy or delete entries) |
@@ -93,7 +108,7 @@ Use **Settings → Quit Lisper** to exit.
 | Dictionary | Replacements and vocabulary |
 | Snippets | Spoken cues that expand to text |
 | Style | Formal/casual, filler removal, voice commands |
-| Settings | Shortcut, microphone, insertion mode, floating bar, sounds, model, language, theme, privacy, MCP setup |
+| Settings | Shortcut, microphone, insertion, live preview, island position, sounds, model, language, theme, privacy, MCP setup |
 
 ## Command line
 
@@ -155,8 +170,9 @@ src/
   mcp_server.*      MCP server; mcp_main.cpp is the lisper-mcp entry point
   main.cpp          CLI
   gui_app.cpp       Desktop app shell
-  gui/              Pages, theme, dictation controller, floating bar,
-                    global shortcut, paste, single-instance control
+  gui/              Pages, theme, dictation controller, notch island,
+                    global shortcuts and chords, paste, platform glue
+                    (platform_mac.mm), single-instance control
 tests/              Unit tests (ctest)
 docs/               MCP, GUI architecture, API, models
 ```

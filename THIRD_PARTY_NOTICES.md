@@ -11,6 +11,8 @@ the respective upstream package.
 | [nlohmann/json](https://github.com/nlohmann/json) 3.11.3 | JSON for settings, history and MCP | MIT, Copyright (c) 2013-2022 Niels Lohmann |
 | [tinyfiledialogs](https://sourceforge.net/projects/tinyfiledialogs/) | Native file pickers | zlib, Copyright (c) 2014-2017 Guillaume Vareille |
 | [SDL2](https://libsdl.org) | Windowing, audio capture, clipboard (linked) | zlib, Copyright (C) 1997-2024 Sam Lantinga |
+| [Inter](https://rsms.me/inter/) 4.0 | UI typeface, embedded in the app | SIL Open Font License 1.1, Copyright (c) 2016 The Inter Project Authors |
+| [Source Serif 4](https://github.com/adobe-fonts/source-serif) 4.005 | Heading typeface, embedded in the app | SIL Open Font License 1.1, Copyright 2014-2023 Adobe |
 
 ## Runtime tools (not distributed with Lisper)
 
