@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
 project(lisper VERSION 0.4.0 LANGUAGES C CXX)
 if(APPLE)
-    # Objective-C++ for the macOS window/notch integration (gui/platform_mac.mm).
-    # Must be enabled at the top level, before any targets are generated.
+    # Objective-C (whisper.cpp's Metal backend, *.m) and Objective-C++ (our
+    # gui/platform_mac.mm). Enable both up front so .m files are compiled as
+    # Objective-C, not Objective-C++.
+    enable_language(OBJC)
     enable_language(OBJCXX)
 endif()
 

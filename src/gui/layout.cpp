@@ -16,6 +16,10 @@
 #include <string>
 #include <vector>
 
+#ifndef LISPER_VERSION
+#define LISPER_VERSION "0.0.0" // set by CMake
+#endif
+
 namespace fs = std::filesystem;
 
 namespace gui {

@@ -168,8 +168,7 @@ struct Server::Impl {
   std::unique_ptr<Lisper> engine;
   std::string engine_model_path;
 
-  explicit Impl(ServerOptions opts) : options(std::move(opts)) {
-    settings = settings_store::load();
+  explicit Impl(ServerOptions opts) : options(std::move(opts)), settings(settings_store::load()) {
     if (!options.model_profile.empty()) {
       settings.model_profile = options.model_profile;
       settings.model_path.clear();

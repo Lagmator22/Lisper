@@ -92,10 +92,8 @@ void damp_mouse_wheel(SDL_Event *event) {
   }
   const Sint32 original_x = event->wheel.x;
   const Sint32 original_y = event->wheel.y;
-#if SDL_VERSION_ATLEAST(2, 0, 18)
   event->wheel.preciseX *= kMouseWheelScale;
   event->wheel.preciseY *= kMouseWheelScale;
-#endif
   event->wheel.x = static_cast<Sint32>(static_cast<float>(event->wheel.x) * kMouseWheelScale);
   event->wheel.y = static_cast<Sint32>(static_cast<float>(event->wheel.y) * kMouseWheelScale);
   if (event->wheel.x == 0 && original_x != 0) {
