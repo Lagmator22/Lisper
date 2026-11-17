@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
 project(lisper VERSION 0.4.0 LANGUAGES C CXX)
+if(APPLE)
+    # Objective-C++ for the macOS window/notch integration (gui/platform_mac.mm).
+    # Must be enabled at the top level, before any targets are generated.
+    enable_language(OBJCXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -55,7 +60,7 @@ set(LISPER_CORE_SOURCES
     src/media.cpp
     src/formatter.cpp
     src/watcher.cpp
-    src/process.cpp
+    src/subprocess.cpp
     src/paths.cpp
     src/model_download.cpp
     src/text_cleanup.cpp
@@ -155,7 +160,6 @@ if(LISPER_BUILD_GUI AND SDL2_FOUND AND EXISTS ${IMGUI_DIR}/imgui.cpp)
             target_link_options(lisper_gui PRIVATE /ENTRY:mainCRTStartup)
         endif()
     elseif(APPLE)
-        enable_language(OBJCXX)
         target_sources(lisper_gui PRIVATE src/gui/platform_mac.mm)
         set_source_files_properties(src/gui/platform_mac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
         target_link_libraries(lisper_gui PRIVATE

@@ -8,8 +8,8 @@
 #include "model_download.h"
 #include "model_profiles.h"
 #include "paths.h"
-#include "process.h"
 #include "settings.h"
+#include "subprocess.h"
 #include "text_cleanup.h"
 #include "watcher.h"
 

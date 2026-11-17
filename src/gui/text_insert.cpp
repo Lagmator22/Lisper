@@ -1,6 +1,6 @@
 #include "gui/text_insert.h"
 
-#include "process.h"
+#include "subprocess.h"
 
 #include <chrono>
 #include <cstdlib>
