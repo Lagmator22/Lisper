@@ -39,7 +39,7 @@ struct Palette {
   bool dark = false;
 };
 
-enum class Icon { Home, Mic, Book, Bolt, Brush, Gear, File, Copy, Trash, Check, Plug, Download };
+enum class Icon { Home, Mic, Book, Bolt, Brush, Gear, File, Copy, Trash, Check };
 
 ImU32 color_u32(int r, int g, int b, int a = 255);
 ImVec4 color_v4(int r, int g, int b, int a = 255);
@@ -50,8 +50,9 @@ void apply_theme(bool dark);
 const Palette &palette();
 
 // --- surfaces -------------------------------------------------------------
+// `border` overrides the hairline colour when its alpha is non-zero.
 bool begin_card(const char *id, const ImVec2 &size = ImVec2(0, 0), bool auto_height = true,
-                float padding = 20.0f);
+                float padding = 20.0f, const ImVec4 &border = ImVec4(0, 0, 0, 0));
 void end_card();
 
 // --- text -----------------------------------------------------------------

@@ -578,6 +578,10 @@ void render_transcribe(UiContext &ctx) {
     }
 
     ImGui::Spacing();
+    // Validate against the model chosen in Settings (shared with dictation).
+    state.resolved_model_path = state.settings.model_path.empty()
+                                    ? resolve_model_path("", state.settings.model_profile)
+                                    : state.settings.model_path;
     const auto issues = validation_issues(state);
     const bool can_start = !job.running() && issues.empty();
     if (job.running()) {
@@ -598,13 +602,9 @@ void render_transcribe(UiContext &ctx) {
       }
       if (primary_button("Transcribe", ImVec2(160.0f, 40.0f))) {
         auto request = build_request(state);
-        request.model_profile = state.settings.model_profile;
-        request.explicit_model_path = state.settings.model_path;
-        request.language = state.settings.language;
-        request.translate = state.settings.translate;
-        request.device = state.settings.device;
-        request.threads = state.settings.engine_config("").threads;
-        append_log(state, "Starting transcription for " + request.input_path);
+        request.shared_engine = ctx.dictation.engine();
+        state.status_line = "Transcribing " + filename_for_display(request.input_path) + "...";
+        state.preview_text.clear();
         job.start(request);
       }
       if (!can_start) {
@@ -836,9 +836,8 @@ void style_choice(UiContext &ctx, const char *id, const char *title, const char 
   Settings &s = ctx.state.settings;
   const Palette &p = palette();
   const bool selected = s.style == value;
-  ImGui::PushStyleColor(ImGuiCol_Border, selected ? p.accent : p.border);
   ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, selected ? 2.0f : 1.0f);
-  if (begin_card(id, ImVec2(width, 0.0f))) {
+  if (begin_card(id, ImVec2(width, 0.0f), true, 20.0f, selected ? p.accent : p.border)) {
     heading(ctx.fonts, title);
     ImGui::Spacing();
     ImGui::PushStyleColor(ImGuiCol_ChildBg, p.input);
@@ -860,7 +859,6 @@ void style_choice(UiContext &ctx, const char *id, const char *title, const char 
   }
   end_card();
   ImGui::PopStyleVar();
-  ImGui::PopStyleColor();
 }
 
 void render_style(UiContext &ctx) {

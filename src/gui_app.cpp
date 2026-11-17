@@ -145,6 +145,7 @@ struct PendingInsert {
 int run_gui_app(int argc, char **argv) {
   bool start_minimized = false;
   gui::Page start_page = gui::Page::Home;
+  std::string open_file; // "Open with Lisper" / drag onto the app icon
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
     if (a == "--help" || a == "-h") {
@@ -160,6 +161,11 @@ int run_gui_app(int argc, char **argv) {
     }
     if (a == "--minimized") {
       start_minimized = true;
+    }
+    if (!a.empty() && a[0] != '-') {
+      open_file = a;
+      start_page = gui::Page::Transcribe;
+      continue;
     }
     if (a == "--page" && i + 1 < argc) {
       const std::string page = argv[++i];
@@ -218,12 +224,12 @@ int run_gui_app(int argc, char **argv) {
 
   gui::AppState state;
   state.page = start_page;
+  if (!open_file.empty()) {
+    std::error_code ec;
+    gui::copy_string(state.input_path, fs::absolute(open_file, ec).string());
+  }
   state.settings = settings_store::load();
   gui::apply_theme(state.settings.dark_theme);
-  gui::copy_string(state.language, state.settings.language);
-  state.threads = gui::recommended_threads();
-  state.status_line.clear();
-  gui::refresh_resolved_model(state);
 
   ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
   ImGui_ImplSDLRenderer2_Init(renderer);
@@ -478,7 +484,6 @@ int run_gui_app(int argc, char **argv) {
       state.duration_ms = completed->result.duration_ms;
       state.segment_count = static_cast<int>(completed->result.segments.size());
       state.last_run_success = completed->success;
-      gui::append_log(state, completed->status);
     }
 
     // --- persistence -----------------------------------------------------------

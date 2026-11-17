@@ -36,29 +36,19 @@ struct JobRequest {
 };
 
 struct AppState {
+  // File transcription
   std::array<char, kPathBuffer> input_path{};
   std::array<char, kPathBuffer> output_path{};
-  std::array<char, kPathBuffer> manual_model_path{};
-  std::array<char, kTextBuffer> language{};
-
-  int profile_index = 3; // "quality"
   int format_index = 0;
-  int device_index = 0;
-  int threads = 4;
-  int gpu_device = 0;
-  bool translate = false;
-  bool flash_attn = true;
-  bool auto_scroll_log = true;
 
   std::string resolved_model_path;
   std::string preview_text;
   std::string final_output_path;
-  std::string status_line = "Ready for a local transcription run.";
+  std::string status_line;
   std::string detected_language;
   int duration_ms = 0;
   int segment_count = 0;
   bool last_run_success = false;
-  std::vector<std::string> logs;
 
   // --- Flow-style app state ---
   Page page = Page::Home;
@@ -99,23 +89,11 @@ void copy_string(std::array<char, kLongBuffer> &target, const std::string &value
 std::string trim_copy(const char *value);
 bool path_exists(const std::string &path);
 std::string filename_for_display(const std::string &path);
-void append_log(AppState &state, const std::string &message);
 
-int recommended_threads();
-int max_threads_for_slider();
 std::string format_duration_ms(int duration_ms);
 
-const std::vector<ModelProfile> &profiles();
 formatter::Format format_from_index(int index);
-const char *format_label(formatter::Format format);
-LisperConfig::Device device_from_index(int index);
-std::string describe_device(LisperConfig::Device device);
 
-std::string current_profile_name(int profile_index);
-std::string current_profile_filename(int profile_index);
-std::string profile_description(int profile_index);
-
-void refresh_resolved_model(AppState &state);
 std::string computed_output_preview(const AppState &state);
 std::vector<std::string> validation_issues(const AppState &state);
 JobRequest build_request(const AppState &state);

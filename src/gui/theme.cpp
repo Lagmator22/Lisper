@@ -245,9 +245,10 @@ void apply_theme(bool dark) {
 
 // --- surfaces ---------------------------------------------------------------
 
-bool begin_card(const char *id, const ImVec2 &size, bool auto_height, float padding) {
+bool begin_card(const char *id, const ImVec2 &size, bool auto_height, float padding,
+                const ImVec4 &border) {
   ImGui::PushStyleColor(ImGuiCol_ChildBg, g_palette.card);
-  ImGui::PushStyleColor(ImGuiCol_Border, g_palette.border);
+  ImGui::PushStyleColor(ImGuiCol_Border, border.w > 0.0f ? border : g_palette.border);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padding, padding));
   ImGuiChildFlags flags = ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding;
   if (auto_height) {
@@ -532,22 +533,6 @@ void draw_icon(ImDrawList *dl, Icon icon, const ImVec2 &c, float size, ImU32 col
                 th * 1.3f);
     dl->AddLine(ImVec2(c.x - s * 0.15f, c.y + s * 0.55f), ImVec2(c.x + s * 0.75f, c.y - s * 0.55f),
                 col, th * 1.3f);
-    break;
-  case Icon::Plug:
-    dl->AddRect(ImVec2(c.x - s * 0.55f, c.y - s * 0.3f), ImVec2(c.x + s * 0.55f, c.y + s * 0.35f),
-                col, 3.0f, 0, th);
-    dl->AddLine(ImVec2(c.x - s * 0.25f, c.y - s * 0.3f), ImVec2(c.x - s * 0.25f, c.y - s * 0.9f),
-                col, th);
-    dl->AddLine(ImVec2(c.x + s * 0.25f, c.y - s * 0.3f), ImVec2(c.x + s * 0.25f, c.y - s * 0.9f),
-                col, th);
-    dl->AddLine(ImVec2(c.x, c.y + s * 0.35f), ImVec2(c.x, c.y + s * 0.95f), col, th);
-    break;
-  case Icon::Download:
-    dl->AddLine(ImVec2(c.x, c.y - s * 0.9f), ImVec2(c.x, c.y + s * 0.35f), col, th);
-    dl->AddLine(ImVec2(c.x - s * 0.45f, c.y - s * 0.1f), ImVec2(c.x, c.y + s * 0.35f), col, th);
-    dl->AddLine(ImVec2(c.x + s * 0.45f, c.y - s * 0.1f), ImVec2(c.x, c.y + s * 0.35f), col, th);
-    dl->AddLine(ImVec2(c.x - s * 0.8f, c.y + s * 0.85f), ImVec2(c.x + s * 0.8f, c.y + s * 0.85f),
-                col, th);
     break;
   }
 }
