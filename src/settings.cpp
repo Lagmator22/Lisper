@@ -49,8 +49,10 @@ template <typename T> void read(const json &j, const char *key, T &out) {
 }
 
 int auto_threads() {
+  // Leave a core for the UI and audio threads so the app stays responsive.
   const unsigned hc = std::thread::hardware_concurrency();
-  return static_cast<int>(std::clamp(hc == 0 ? 4u : hc, 2u, 8u));
+  const unsigned usable = hc > 2 ? hc - 1 : 2u;
+  return static_cast<int>(std::clamp(hc == 0 ? 4u : usable, 2u, 8u));
 }
 
 } // namespace

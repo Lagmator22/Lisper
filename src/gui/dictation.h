@@ -66,6 +66,7 @@ public:
   // pasted into the app, or left on the clipboard (with a short hint why).
   void report_inserted(bool pasted, const std::string &message);
   bool pasted() const;
+  bool insert_reported() const; // false until report_inserted() for this result
 
   // Expose the engine for other features (file transcription) to reuse.
   std::shared_ptr<Lisper> engine() const;
@@ -100,6 +101,7 @@ private:
   std::chrono::steady_clock::time_point phase_since_ = std::chrono::steady_clock::now();
   std::string message_;
   bool pasted_ = true;
+  bool insert_reported_ = false;
 };
 
 const char *phase_label(Dictation::Phase phase);

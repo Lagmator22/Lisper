@@ -3,6 +3,7 @@
 #include "model_profiles.h"
 #include "text_cleanup.h"
 
+#include <cstdio>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -84,6 +85,8 @@ void Dictation::start_live_preview() {
 
       DecodeOptions options;
       options.cancel = &live_stop_;
+      // Encode only the audio we have (+1.5 s headroom) instead of 30 s.
+      options.audio_ctx = static_cast<int>(pcm.size() / 320) + 75;
       const TranscriptionResult r = engine->transcribe_pcm(pcm, options);
       if (live_stop_ || !r.success) {
         continue;
@@ -189,6 +192,7 @@ void Dictation::start() {
   lock.lock();
   live_text_.clear();
   pasted_ = true;
+  insert_reported_ = false;
   set_phase(Phase::Recording);
   const bool live = settings_.live_preview;
   lock.unlock();
@@ -242,7 +246,11 @@ void Dictation::stop() {
 
     DecodeOptions options;
     options.cancel = &cancel_flag_;
+    const auto t0 = std::chrono::steady_clock::now();
     const TranscriptionResult r = engine->transcribe_pcm(pcm, options);
+    std::fprintf(stderr, "lisper: transcribed %.1fs of audio in %.2fs\n",
+                 static_cast<double>(pcm.size()) / 16000.0,
+                 std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
 
     std::lock_guard<std::mutex> guard(mutex_);
     if (cancel_flag_) {
@@ -333,8 +341,14 @@ void Dictation::report_inserted(bool pasted, const std::string &message) {
   // Not being able to paste is not a failure: the text is on the clipboard.
   std::lock_guard<std::mutex> lock(mutex_);
   pasted_ = pasted;
+  insert_reported_ = true;
   message_ = message;
   phase_since_ = std::chrono::steady_clock::now();
+}
+
+bool Dictation::insert_reported() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return insert_reported_;
 }
 
 bool Dictation::pasted() const {

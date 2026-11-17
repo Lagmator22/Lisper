@@ -289,6 +289,8 @@ void Overlay::update(const Dictation &dictation, const Settings &settings) {
     last_live_text_.clear();
     std::fill(bars_.begin(), bars_.end(), 0.0f);
     SDL_ShowWindow(window_);
+    // Re-assert level/Spaces behaviour: some platforms reset it on show.
+    transparent_ = platform::configure_island_window(window_) || transparent_;
     visible_ = true;
   }
 
@@ -443,7 +445,9 @@ void Overlay::render(const Dictation &dictation, float dt) {
     const char *label = phase == Dictation::Phase::Recording      ? "Listening"
                         : phase == Dictation::Phase::Transcribing ? "Writing"
                         : phase == Dictation::Phase::Done
-                            ? (dictation.pasted() ? "Inserted" : "Copied")
+                            ? (!dictation.insert_reported() ? "Inserting"
+                               : dictation.pasted()         ? "Inserted"
+                                                            : "Copied")
                         : phase == Dictation::Phase::Error ? "Couldn't dictate"
                                                            : "";
     ImGui::PushFont(font_label_);
