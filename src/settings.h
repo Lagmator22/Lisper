@@ -37,6 +37,10 @@ struct Settings {
   std::vector<std::string> vocabulary;
   std::vector<text_cleanup::Snippet> snippets;
 
+  // App
+  bool dark_theme = false;
+  bool close_to_background = true; // closing the window keeps dictation running
+
   // Privacy
   bool save_history = true;
   int history_limit = 1000;

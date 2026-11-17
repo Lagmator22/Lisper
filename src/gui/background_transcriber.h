@@ -2,6 +2,7 @@
 
 #include "gui/state.h"
 
+#include <atomic>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -39,6 +40,7 @@ private:
   mutable std::mutex mutex_;
   std::thread worker_;
   bool running_ = false;
+  std::atomic<bool> cancel_{false};
   std::string status_ = "Idle";
   std::optional<JobOutcome> completed_;
 };

@@ -24,6 +24,20 @@ void copy_string(std::array<char, kTextBuffer> &target, const std::string &value
   std::snprintf(target.data(), target.size(), "%s", value.c_str());
 }
 
+void copy_string(std::array<char, kLongBuffer> &target, const std::string &value) {
+  target.fill('\0');
+  std::snprintf(target.data(), target.size(), "%s", value.c_str());
+}
+
+void show_toast(AppState &state, const std::string &message, double seconds) {
+  state.toast = message;
+  state.toast_until = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                              std::chrono::steady_clock::now().time_since_epoch())
+                                              .count()) /
+                          1000.0 +
+                      seconds;
+}
+
 std::string trim_copy(const char *value) {
   std::string text = value == nullptr ? "" : value;
   const auto start = text.find_first_not_of(" \t\r\n");

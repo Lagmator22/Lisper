@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <mutex>
@@ -27,6 +28,9 @@ struct DecodeOptions {
   int translate = -1;   // -1 = engine default, 0 = off, 1 = translate to English
   bool single_segment = false;
   std::string prompt; // empty = use config.initial_prompt
+  // Optional per-call cancellation flag, checked alongside the global
+  // interrupt_state so independent jobs can be cancelled separately.
+  const std::atomic<bool> *cancel = nullptr;
 };
 
 struct LisperConfig {

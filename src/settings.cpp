@@ -118,6 +118,8 @@ std::string to_json(const Settings &s) {
       {"dictionary", dict},
       {"vocabulary", s.vocabulary},
       {"snippets", snippets},
+      {"dark_theme", s.dark_theme},
+      {"close_to_background", s.close_to_background},
       {"save_history", s.save_history},
       {"history_limit", s.history_limit},
   };
@@ -158,6 +160,8 @@ Settings from_json(const std::string &text) {
   read(j, "style", style);
   s.style = style == "casual" ? text_cleanup::Style::Casual : text_cleanup::Style::Formal;
   read(j, "vocabulary", s.vocabulary);
+  read(j, "dark_theme", s.dark_theme);
+  read(j, "close_to_background", s.close_to_background);
   read(j, "save_history", s.save_history);
   read(j, "history_limit", s.history_limit);
 

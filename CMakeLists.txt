@@ -106,6 +106,12 @@ if(LISPER_BUILD_GUI AND SDL2_FOUND AND EXISTS ${IMGUI_DIR}/imgui.cpp)
         src/gui/background_transcriber.cpp
         src/gui/file_dialog.cpp
         src/gui/layout.cpp
+        src/gui/hotkey.cpp
+        src/gui/text_insert.cpp
+        src/gui/control_channel.cpp
+        src/gui/sounds.cpp
+        src/gui/dictation.cpp
+        src/gui/overlay.cpp
         third_party/tinyfiledialogs/tinyfiledialogs.c
         ${IMGUI_DIR}/imgui.cpp
         ${IMGUI_DIR}/imgui_draw.cpp
@@ -122,10 +128,29 @@ if(LISPER_BUILD_GUI AND SDL2_FOUND AND EXISTS ${IMGUI_DIR}/imgui.cpp)
         ${CMAKE_SOURCE_DIR}/third_party/tinyfiledialogs
     )
 
-    target_compile_definitions(lisper_gui PRIVATE SDL_MAIN_HANDLED)
+    target_compile_definitions(lisper_gui PRIVATE SDL_MAIN_HANDLED LISPER_VERSION="${PROJECT_VERSION}")
     target_link_libraries(lisper_gui PRIVATE lisper_core PkgConfig::SDL2)
     if(WIN32)
-        target_link_libraries(lisper_gui PRIVATE comdlg32 ole32)
+        target_link_libraries(lisper_gui PRIVATE comdlg32 ole32 user32)
+        set_target_properties(lisper_gui PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
+    elseif(APPLE)
+        target_link_libraries(lisper_gui PRIVATE
+            "-framework Carbon" "-framework ApplicationServices" "-framework CoreFoundation")
+        set_target_properties(lisper_gui PROPERTIES
+            MACOSX_BUNDLE TRUE
+            OUTPUT_NAME "Lisper"
+            MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/cmake/Info.plist.in
+            MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+            MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
+    else()
+        # Global dictation shortcut on X11 (Wayland users bind `lisper_gui --toggle`).
+        find_package(X11 QUIET)
+        if(X11_FOUND)
+            target_compile_definitions(lisper_gui PRIVATE LISPER_HAVE_X11)
+            target_include_directories(lisper_gui PRIVATE ${X11_INCLUDE_DIR})
+            target_link_libraries(lisper_gui PRIVATE ${X11_LIBRARIES})
+            message(STATUS "X11 found - enabling global dictation shortcut")
+        endif()
     endif()
     message(STATUS "Building lisper_gui desktop app")
 elseif(LISPER_BUILD_GUI)
@@ -151,7 +176,12 @@ endif()
 # ---------------------------------------------------------------------------
 install(TARGETS lisper lisper-mcp RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(TARGET lisper_gui)
-    install(TARGETS lisper_gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS lisper_gui
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION Applications)
+    if(UNIX AND NOT APPLE)
+        install(FILES packaging/lisper.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    endif()
 endif()
 install(FILES
     src/lisper.h src/formatter.h src/media.h src/model_profiles.h src/paths.h

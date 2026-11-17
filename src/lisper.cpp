@@ -305,12 +305,16 @@ TranscriptionResult Lisper::transcribe_pcm(const std::vector<float> &pcm,
   params.single_segment = single_segment;
   params.token_timestamps = !single_segment;
   params.initial_prompt = effective_prompt.empty() ? nullptr : effective_prompt.c_str();
-  params.abort_callback = [](void *) { return interrupt_state::is_interrupted(); };
-  params.abort_callback_user_data = nullptr;
+  params.abort_callback = [](void *user_data) {
+    const auto *flag = static_cast<const std::atomic<bool> *>(user_data);
+    return interrupt_state::is_interrupted() || (flag != nullptr && flag->load());
+  };
+  params.abort_callback_user_data = const_cast<std::atomic<bool> *>(options.cancel);
 
   int ret = whisper_full(ctx_, params, pcm.data(), static_cast<int>(pcm.size()));
   if (ret != 0) {
-    if (interrupt_state::is_interrupted()) {
+    if (interrupt_state::is_interrupted() ||
+        (options.cancel != nullptr && options.cancel->load())) {
       result.error = "Interrupted by user";
       return result;
     }
