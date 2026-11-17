@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(lisper VERSION 0.1.0 LANGUAGES C CXX)
+project(lisper VERSION 0.3.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,6 +53,11 @@ set(LISPER_CORE_SOURCES
     src/process.cpp
     src/paths.cpp
     src/model_download.cpp
+    src/text_cleanup.cpp
+    src/settings.cpp
+    src/history.cpp
+    src/audio_capture.cpp
+    src/mcp_server.cpp
 )
 
 if(SDL2_FOUND AND LISPER_ENABLE_LIVE)
@@ -69,6 +74,8 @@ target_include_directories(lisper_core PUBLIC
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/lisper>
 )
 
+target_include_directories(lisper_core PRIVATE ${CMAKE_SOURCE_DIR}/third_party)
+target_compile_definitions(lisper_core PRIVATE LISPER_VERSION="${PROJECT_VERSION}")
 target_link_libraries(lisper_core PUBLIC whisper)
 
 if(SDL2_FOUND AND LISPER_ENABLE_LIVE)
@@ -82,6 +89,11 @@ add_executable(lisper
 )
 
 target_link_libraries(lisper PRIVATE lisper_core)
+
+# MCP server (stdio) for Claude Desktop, Claude Code, Cursor and other clients
+add_executable(lisper-mcp src/mcp_main.cpp)
+target_compile_definitions(lisper-mcp PRIVATE LISPER_VERSION="${PROJECT_VERSION}")
+target_link_libraries(lisper-mcp PRIVATE lisper_core)
 
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/third_party/imgui)
 
@@ -127,16 +139,17 @@ endif()
 if(LISPER_BUILD_TESTS)
     enable_testing()
     add_executable(lisper_tests tests/unit_tests.cpp)
+    target_include_directories(lisper_tests PRIVATE ${CMAKE_SOURCE_DIR}/third_party)
     target_link_libraries(lisper_tests PRIVATE lisper_core)
     add_test(NAME lisper_unit_tests COMMAND lisper_tests)
     set_tests_properties(lisper_unit_tests PROPERTIES
-        ENVIRONMENT "LISPER_SAMPLE_WAV=${CMAKE_SOURCE_DIR}/third_party/whisper.cpp/samples/jfk.wav")
+        ENVIRONMENT "LISPER_HOME=${CMAKE_BINARY_DIR}/test_home;LISPER_SAMPLE_WAV=${CMAKE_SOURCE_DIR}/third_party/whisper.cpp/samples/jfk.wav")
 endif()
 
 # ---------------------------------------------------------------------------
 # Install
 # ---------------------------------------------------------------------------
-install(TARGETS lisper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS lisper lisper-mcp RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(TARGET lisper_gui)
     install(TARGETS lisper_gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()

@@ -228,6 +228,11 @@ void Lisper::set_initial_prompt(const std::string &prompt) {
 }
 
 TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
+  return transcribe(audio_path, DecodeOptions{});
+}
+
+TranscriptionResult Lisper::transcribe(const std::string &audio_path,
+                                       const DecodeOptions &options) {
   TranscriptionResult result;
 
   if (!ctx_) {
@@ -249,11 +254,20 @@ TranscriptionResult Lisper::transcribe(const std::string &audio_path) {
     return result;
   }
 
-  return transcribe_pcm(pcm);
+  return transcribe_pcm(pcm, options);
 }
 
 TranscriptionResult Lisper::transcribe_pcm(const std::vector<float> &pcm, bool single_segment,
                                            const std::string &prompt) {
+  DecodeOptions options;
+  options.single_segment = single_segment;
+  options.prompt = prompt;
+  return transcribe_pcm(pcm, options);
+}
+
+TranscriptionResult Lisper::transcribe_pcm(const std::vector<float> &pcm,
+                                           const DecodeOptions &options) {
+  const bool single_segment = options.single_segment;
   TranscriptionResult result;
   if (!ctx_) {
     result.error = "Model not loaded";
@@ -268,15 +282,23 @@ TranscriptionResult Lisper::transcribe_pcm(const std::vector<float> &pcm, bool s
 
   result.duration_ms = static_cast<int>((pcm.size() * 1000) / WHISPER_SAMPLE_RATE);
 
-  const std::string language = config_.language.empty() ? "auto" : config_.language;
-  const std::string effective_prompt = prompt.empty() ? config_.initial_prompt : prompt;
+  std::string language = options.language.empty() ? config_.language : options.language;
+  if (language.empty()) {
+    language = "auto";
+  }
+  if (language != "auto" && whisper_lang_id(language.c_str()) < 0) {
+    result.error = "Unsupported language code: " + language;
+    return result;
+  }
+  const std::string effective_prompt =
+      options.prompt.empty() ? config_.initial_prompt : options.prompt;
 
   whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
   params.print_realtime = false;
   params.print_progress = false;
   params.print_timestamps = false;
   params.print_special = false;
-  params.translate = config_.translate;
+  params.translate = options.translate < 0 ? config_.translate : options.translate == 1;
   params.language = language.c_str();
   params.detect_language = false;
   params.n_threads = config_.threads;

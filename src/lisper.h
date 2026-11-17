@@ -21,6 +21,14 @@ struct TranscriptionResult {
   std::string error;
 };
 
+// Per-call overrides for a single decode.
+struct DecodeOptions {
+  std::string language; // empty = use the engine's configured language
+  int translate = -1;   // -1 = engine default, 0 = off, 1 = translate to English
+  bool single_segment = false;
+  std::string prompt; // empty = use config.initial_prompt
+};
+
 struct LisperConfig {
   enum class Device {
     Auto,
@@ -55,6 +63,8 @@ public:
   // config.initial_prompt when non-empty. Thread-safe: calls are serialized.
   TranscriptionResult transcribe_pcm(const std::vector<float> &pcm, bool single_segment = false,
                                      const std::string &prompt = "");
+  TranscriptionResult transcribe_pcm(const std::vector<float> &pcm, const DecodeOptions &options);
+  TranscriptionResult transcribe(const std::string &audio_path, const DecodeOptions &options);
 
   bool is_loaded() const;
   int threads() const { return config_.threads; }

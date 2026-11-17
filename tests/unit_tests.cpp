@@ -2,12 +2,18 @@
 // builds anywhere the library does. Run via `ctest` or ./lisper_tests.
 
 #include "formatter.h"
+#include "history.h"
+#include "mcp_server.h"
 #include "media.h"
 #include "model_download.h"
 #include "model_profiles.h"
 #include "paths.h"
 #include "process.h"
+#include "settings.h"
+#include "text_cleanup.h"
 #include "watcher.h"
+
+#include <nlohmann/json.hpp>
 
 #include <cstdint>
 #include <cstdlib>
@@ -241,6 +247,151 @@ void test_scan_directory() {
   CHECK(watcher::scan_directory((dir / "nope").string()).empty());
 }
 
+void test_cleanup_fillers_and_commands() {
+  text_cleanup::Options o;
+  CHECK(text_cleanup::clean(" Um, so I think, uh, we ship it.", o) == "So I think, we ship it.");
+  CHECK(text_cleanup::clean("first point new line second point", o) == "First point\nSecond point");
+  CHECK(text_cleanup::clean("hello new paragraph world", o) == "Hello\n\nWorld");
+  CHECK(text_cleanup::clean("[BLANK_AUDIO]", o).empty());
+  CHECK(text_cleanup::clean(" (music) Thank you.", o) == "Thank you.");
+  // Words that merely contain a filler must survive.
+  CHECK(text_cleanup::clean("umbrella under the hummus", o) == "Umbrella under the hummus");
+  o.remove_fillers = false;
+  CHECK(text_cleanup::clean("um okay", o) == "Um okay");
+}
+
+void test_cleanup_dictionary_snippets_style() {
+  text_cleanup::Options o;
+  o.dictionary.push_back({"lisa per", "Lisper"});
+  o.snippets.push_back({"my email signature", "Best,\nSam"});
+  CHECK(text_cleanup::clean("I love Lisa Per.", o) == "I love Lisper.");
+  CHECK(text_cleanup::clean("thanks my email signature", o) == "Thanks Best,\nSam");
+  o.style = text_cleanup::Style::Casual;
+  CHECK(text_cleanup::clean("Sounds good. See you at the API sync.", o) ==
+        "sounds good. see you at the API sync");
+  CHECK(text_cleanup::clean("I agree.", o) == "I agree");
+  CHECK(text_cleanup::vocabulary_prompt({{"a", "Lisper"}, {"b", "lisper"}}, {"Kubernetes"}) ==
+        "Lisper, Kubernetes.");
+  CHECK(text_cleanup::count_words("  one two\nthree ") == 3);
+}
+
+void test_settings_roundtrip() {
+  Settings s;
+  s.language = "de";
+  s.hotkey = "Alt+Space";
+  s.hotkey_hold = true;
+  s.style = text_cleanup::Style::Casual;
+  s.dictionary.push_back({"k eight s", "k8s"});
+  s.snippets.push_back({"addr", "1 Main St"});
+  s.device = LisperConfig::Device::CPU;
+  const Settings back = settings_store::from_json(settings_store::to_json(s));
+  CHECK(back.language == "de");
+  CHECK(back.hotkey == "Alt+Space" && back.hotkey_hold);
+  CHECK(back.style == text_cleanup::Style::Casual);
+  CHECK(back.dictionary.size() == 1 && back.dictionary[0].to == "k8s");
+  CHECK(back.snippets.size() == 1 && back.snippets[0].text == "1 Main St");
+  CHECK(back.device == LisperConfig::Device::CPU);
+  // Corrupt or hostile files fall back to safe defaults.
+  CHECK(settings_store::from_json("not json").hotkey == Settings{}.hotkey);
+  const Settings clamped = settings_store::from_json(R"({"threads": 99999, "language": 5})");
+  CHECK(clamped.threads == 256);
+  CHECK(clamped.language == Settings{}.language);
+  CHECK(s.engine_config("m.bin").initial_prompt == "k8s.");
+}
+
+void test_history_store() {
+  const std::string path = (scratch_dir() / "history.jsonl").string();
+  for (int i = 0; i < 5; ++i) {
+    auto e = history::make_entry("entry " + std::to_string(i) + " words", "raw", 2000, "en");
+    CHECK(history::append(e, 3, path));
+  }
+  auto entries = history::load(0, path);
+  CHECK(entries.size() == 3);
+  CHECK(!entries.empty() && entries[0].text == "entry 4 words");
+  CHECK(history::load(1, path).size() == 1);
+  CHECK(history::remove(entries[0].id, path));
+  CHECK(history::load(0, path).size() == 2);
+  { std::ofstream(path, std::ios::app) << "garbage line\n"; }
+  CHECK(history::load(0, path).size() == 2);
+
+  const auto stats = history::compute_stats(history::load(0, path), history::now_ms());
+  CHECK(stats.entries == 2);
+  CHECK(stats.total_words == 6);
+  CHECK(stats.words_per_minute > 89.0 && stats.words_per_minute < 91.0);
+  CHECK(stats.day_streak == 1);
+  CHECK(history::clear(path));
+  CHECK(history::load(0, path).empty());
+}
+
+void test_base64() {
+  bool ok = false;
+  CHECK(mcp::base64_decode("aGVsbG8gd29ybGQ=", ok) == "hello world" && ok);
+  CHECK(mcp::base64_decode("aGVsbG8", ok) == "hello" && ok);
+  mcp::base64_decode("***", ok);
+  CHECK(!ok);
+}
+
+void test_mcp_protocol() {
+  using nlohmann::json;
+  const fs::path allowed = scratch_dir() / "allowed";
+  fs::create_directories(allowed);
+  std::ofstream(allowed / "a.wav") << "x";
+  mcp::ServerOptions opts;
+  opts.allowed_dirs = {allowed.string()};
+  mcp::Server server(opts);
+
+  auto call = [&](const json &msg) { return json::parse(server.handle(msg.dump())); };
+  json r = call({{"jsonrpc", "2.0"},
+                 {"id", 1},
+                 {"method", "initialize"},
+                 {"params", {{"protocolVersion", "2024-11-05"}}}});
+  CHECK(r["result"]["protocolVersion"] == "2024-11-05");
+  r = call({{"jsonrpc", "2.0"},
+            {"id", 2},
+            {"method", "initialize"},
+            {"params", {{"protocolVersion", "1999-01-01"}}}});
+  CHECK(r["result"]["protocolVersion"] == "2025-06-18");
+  CHECK(server.handle(R"({"jsonrpc":"2.0","method":"notifications/initialized"})").empty());
+
+  r = call({{"jsonrpc", "2.0"}, {"id", 3}, {"method", "tools/list"}});
+  bool has_mic = false;
+  for (const auto &t : r["result"]["tools"]) {
+    has_mic = has_mic || t["name"] == "record_and_transcribe";
+    CHECK(t["inputSchema"]["type"] == "object");
+  }
+  CHECK(!has_mic); // opt-in only
+
+  r = call({{"jsonrpc", "2.0"}, {"id", 4}, {"method", "bogus"}});
+  CHECK(r["error"]["code"] == -32601);
+  CHECK(json::parse(server.handle("{oops"))["error"]["code"] == -32700);
+  r = call({{"jsonrpc", "2.0"},
+            {"id", 5},
+            {"method", "tools/call"},
+            {"params", {{"name", "transcribe_file"}, {"arguments", {{"path", "/etc/passwd"}}}}}});
+  CHECK(r["result"]["isError"] == true);
+  r = call({{"jsonrpc", "2.0"},
+            {"id", 6},
+            {"method", "tools/call"},
+            {"params", {{"name", "transcribe_file"}, {"arguments", {{"path", 42}}}}}});
+  CHECK(r["result"]["isError"] == true);
+  r = call(json::array({{{"jsonrpc", "2.0"}, {"id", 7}, {"method", "ping"}},
+                        {{"jsonrpc", "2.0"}, {"method", "notifications/x"}}}));
+  CHECK(r.is_array() && r.size() == 1);
+
+  std::string resolved;
+  CHECK(server.path_allowed((allowed / "a.wav").string(), resolved));
+  CHECK(!server.path_allowed((allowed / ".." / "outside.wav").string(), resolved));
+  // A sibling directory sharing the prefix must not be allowed.
+  const fs::path sibling = scratch_dir() / "allowed_evil";
+  fs::create_directories(sibling);
+  std::ofstream(sibling / "b.wav") << "x";
+  CHECK(!server.path_allowed((sibling / "b.wav").string(), resolved));
+#ifndef _WIN32
+  fs::create_symlink(sibling / "b.wav", allowed / "link.wav");
+  CHECK(!server.path_allowed((allowed / "link.wav").string(), resolved));
+#endif
+}
+
 } // namespace
 
 int main() {
@@ -258,6 +409,12 @@ int main() {
       {"model profiles", test_model_profiles},
       {"private files", test_paths_private_file},
       {"scan directory", test_scan_directory},
+      {"cleanup fillers and commands", test_cleanup_fillers_and_commands},
+      {"cleanup dictionary/snippets/style", test_cleanup_dictionary_snippets_style},
+      {"settings roundtrip", test_settings_roundtrip},
+      {"history store", test_history_store},
+      {"base64", test_base64},
+      {"mcp protocol", test_mcp_protocol},
   };
 
   for (const auto &t : tests) {

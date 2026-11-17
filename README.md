@@ -25,6 +25,18 @@ Local speech-to-text engine built in C++. Transcribes audio and video files usin
 - **Desktop GUI**: Native application with drag-and-drop support
 - **Beautiful CLI**: Animated interface with gradient styling and progress indicators
 
+## Use with AI assistants (MCP)
+
+Lisper ships `lisper-mcp`, a [Model Context Protocol](https://modelcontextprotocol.io)
+server, so Claude Desktop, Claude Code, Cursor, VS Code and other MCP clients can
+transcribe files, transcribe audio they receive, or let you dictate, all on-device.
+
+```bash
+claude mcp add lisper -- lisper-mcp --allow-dir ~/Recordings --allow-microphone
+```
+
+See [docs/MCP.md](docs/MCP.md) for client configs, tools and the security model.
+
 ## Quick Start
 
 ### Prerequisites
